@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FDE — Binary Machine Animations</title>
+<style>
+  :root{
+    --bg:#05060c; --panel:#0c1020; --edge:#1d2540; --txt:#cfe6ff;
+    --cyan:#16f0ff; --green:#19ff9b; --violet:#b07cff; --amber:#ffb02e; --pink:#ff5d8f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);
+    font-family:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace}
+  body{background:
+    radial-gradient(900px 500px at 15% -10%, rgba(22,240,255,.10), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(176,124,255,.10), transparent 60%),
+    var(--bg);}
+  .wrap{max-width:980px;margin:0 auto;padding:56px 18px 64px}
+  header{text-align:center;margin-bottom:42px}
+  .badge{display:inline-block;font-size:11px;letter-spacing:.32em;color:#7d93bd;
+    border:1px solid var(--edge);border-radius:999px;padding:6px 14px;margin-bottom:18px}
+  h1{margin:0;font-size:clamp(30px,7vw,58px);letter-spacing:.14em;line-height:1.05;
+    background:linear-gradient(90deg,var(--cyan),var(--violet),var(--green));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{margin:14px auto 0;max-width:560px;color:#8aa0c8;font-size:14px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+  a.card{display:block;text-decoration:none;color:inherit;position:relative;
+    background:var(--panel);border:1px solid var(--edge);border-radius:16px;
+    padding:24px 22px 22px;overflow:hidden;transition:transform .15s,border-color .15s,box-shadow .15s}
+  a.card:hover{transform:translateY(-4px);border-color:var(--accent);
+    box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 30px var(--glow)}
+  a.card::before{content:"";position:absolute;inset:0;border-radius:16px;padding:1px;
+    background:linear-gradient(135deg,var(--accent),transparent 55%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;opacity:.55;pointer-events:none}
+  .card .num{font-size:12px;letter-spacing:.2em;color:var(--accent);opacity:.8}
+  .card h2{margin:10px 0 6px;font-size:22px;letter-spacing:.04em;color:#fff}
+  .card p{margin:0 0 18px;color:#9fb4d8;font-size:13.5px;line-height:1.65}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+  .chip{font-size:11px;color:#a9bee0;background:rgba(255,255,255,.04);
+    border:1px solid var(--edge);border-radius:999px;padding:4px 10px}
+  .go{display:inline-flex;align-items:center;gap:8px;font-weight:700;
+    color:var(--accent);font-size:14px;letter-spacing:.06em}
+  .go .arrow{transition:transform .15s}
+  a.card:hover .go .arrow{transform:translateX(5px)}
+  .viz{height:96px;border-radius:12px;border:1px solid var(--edge);margin-bottom:18px;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    background:radial-gradient(120% 140% at 50% 0%, rgba(255,255,255,.04), transparent 70%)}
+  .bit{font-size:22px;font-weight:700;letter-spacing:.18em}
+  footer{margin-top:48px;text-align:center;color:#5f7099;font-size:12px;line-height:1.7}
+  footer code{color:#bdd4ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">F D E &nbsp;·&nbsp; B I N A R Y &nbsp;·&nbsp; M A C H I N E S</span>
+    <h1>FDE BINARY</h1>
+    <p class="tag">Interactive animations &amp; tools for learning computer science — from electricity and logic gates up to algorithms, data structures and a working CPU. Vanilla HTML &amp; Canvas, no installs.</p>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="binary.html" style="--accent:var(--cyan);--glow:rgba(22,240,255,.25)">
+      <div class="viz">
+        <span class="bit" style="color:var(--cyan)">1</span>
+        <span class="bit" style="color:#33405e">0</span>
+        <span class="bit" style="color:var(--cyan)">1</span>
+        <span class="bit" style="color:var(--cyan)">1</span>
+        <span class="bit" style="color:#33405e">0</span>
+        <span class="bit" style="color:var(--cyan)">1</span>
+        <span class="bit" style="color:#33405e">0</span>
+        <span class="bit" style="color:var(--cyan)">1</span>
+      </div>
+      <div class="num">01 — SIGNALS</div>
+      <h2>Bits → Colour → Sound</h2>
+      <p>Electricity pulses from a power source through logic gates, building an 8-bit byte that becomes a colour and a musical note. Flip inputs by hand and watch the value change.</p>
+      <div class="chips"><span class="chip">logic gates</span><span class="chip">Web Audio</span><span class="chip">manual mode</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="cpu.html" style="--accent:var(--green);--glow:rgba(25,255,155,.25)">
+      <div class="viz">
+        <span class="bit" style="color:var(--cyan);font-size:14px">FETCH</span>
+        <span class="bit" style="color:var(--violet);font-size:14px">DECODE</span>
+        <span class="bit" style="color:var(--green);font-size:14px">EXEC</span>
+      </div>
+      <div class="num">02 — PROCESSOR</div>
+      <h2>The FDE Cycle</h2>
+      <p>A Von Neumann CPU runs a tiny program. Step through every micro-operation as data flows across colour-coded buses between RAM, the registers (PC, MAR, MDR, CIR, ACC) and the ALU.</p>
+      <div class="chips"><span class="chip">RAM</span><span class="chip">registers</span><span class="chip">ALU</span><span class="chip">single-step</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="sort.html" style="--accent:var(--amber);--glow:rgba(255,176,46,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--amber);font-size:30px;align-self:flex-end">▁▃▂▅▄▇▆█</span>
+      </div>
+      <div class="num">03 — ALGORITHMS</div>
+      <h2>Sorting Visualiser</h2>
+      <p>Watch bubble, insertion, selection, merge and quick sort rearrange an array bar-by-bar. Live comparison and swap counts, with play, step and speed controls.</p>
+      <div class="chips"><span class="chip">5 algorithms</span><span class="chip">step mode</span><span class="chip">counters</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="search.html" style="--accent:var(--green);--glow:rgba(25,255,155,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--green);font-size:15px">LINEAR</span>
+        <span class="bit" style="color:#33405e;font-size:15px">vs</span>
+        <span class="bit" style="color:var(--cyan);font-size:15px">BINARY</span>
+      </div>
+      <div class="num">04 — ALGORITHMS</div>
+      <h2>Linear vs Binary Search</h2>
+      <p>Two searches race on the same sorted array. See why linear is O(n) and binary is O(log n) by comparing how many cells each one checks to find (or miss) the target.</p>
+      <div class="chips"><span class="chip">side-by-side</span><span class="chip">Big-O</span><span class="chip">present/absent</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="pathfinding.html" style="--accent:var(--cyan);--glow:rgba(22,240,255,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--green)">●</span>
+        <span class="bit" style="color:var(--cyan);font-size:16px">→ → →</span>
+        <span class="bit" style="color:var(--pink)">◆</span>
+      </div>
+      <div class="num">05 — ALGORITHMS</div>
+      <h2>Pathfinding</h2>
+      <p>Draw walls on a grid and watch BFS, DFS, Dijkstra and A* search for a route. See how A* heads toward the goal and explores far fewer cells than blind search.</p>
+      <div class="chips"><span class="chip">4 algorithms</span><span class="chip">editable maze</span><span class="chip">A* heuristic</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="binary-math.html" style="--accent:var(--amber);--glow:rgba(255,176,46,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--cyan)">1011</span>
+        <span class="bit" style="color:var(--amber)">+</span>
+        <span class="bit" style="color:var(--green)">0110</span>
+      </div>
+      <div class="num">06 — NUMBERS</div>
+      <h2>Binary Arithmetic</h2>
+      <p>Add and subtract numbers bit by bit, watching carries ripple from the LSB. Subtraction shows the two's-complement trick (A + NOT B + 1), plus bitwise AND/OR/XOR and shifts, with carry and overflow flags.</p>
+      <div class="chips"><span class="chip">carries</span><span class="chip">two's complement</span><span class="chip">overflow flag</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="bases.html" style="--accent:var(--cyan);--glow:rgba(22,240,255,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--cyan);font-size:16px">2 · 8 · 10 · 16</span>
+      </div>
+      <div class="num">07 — NUMBERS</div>
+      <h2>Bases &amp; ASCII</h2>
+      <p>Click bits to build a number and see it in binary, denary, hex and octal simultaneously, with the place-value sum spelled out. Then encode any text into bytes.</p>
+      <div class="chips"><span class="chip">place value</span><span class="chip">hex / octal</span><span class="chip">text → bytes</span></div>
+      <span class="go">Open tool <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="cipher.html" style="--accent:var(--pink);--glow:rgba(255,93,143,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--pink);font-size:18px">A → D</span>
+        <span class="bit" style="color:#33405e;font-size:18px">⊕</span>
+      </div>
+      <div class="num">08 — SECURITY</div>
+      <h2>Cipher Explorer</h2>
+      <p>Encrypt and decrypt with the Caesar shift (and crack it by brute-forcing all 25 shifts), then see how an XOR key scrambles bytes and unscrambles them when applied twice.</p>
+      <div class="chips"><span class="chip">Caesar</span><span class="chip">brute-force</span><span class="chip">XOR</span></div>
+      <span class="go">Open tool <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="recursion.html" style="--accent:var(--violet);--glow:rgba(176,124,255,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--violet);font-size:22px">fib(n)</span>
+      </div>
+      <div class="num">09 — ALGORITHMS</div>
+      <h2>Recursion Call Tree</h2>
+      <p>Watch factorial and Fibonacci unfold as a tree of calls and returns, with a live call stack. Toggle memoisation to see Fibonacci stop recomputing the same subproblems.</p>
+      <div class="chips"><span class="chip">call stack</span><span class="chip">memoisation</span><span class="chip">base cases</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="structures.html" style="--accent:var(--cyan);--glow:rgba(22,240,255,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--cyan);font-size:15px">STACK · QUEUE · BST</span>
+      </div>
+      <div class="num">10 — DATA STRUCTURES</div>
+      <h2>Stack · Queue · BST</h2>
+      <p>Push and pop a LIFO stack, enqueue and dequeue a FIFO queue, and build a binary search tree — then animate in-order, pre-order and post-order traversals and value search.</p>
+      <div class="chips"><span class="chip">LIFO / FIFO</span><span class="chip">tree</span><span class="chip">traversals</span></div>
+      <span class="go">Launch animation <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="logic.html" style="--accent:var(--green);--glow:rgba(25,255,155,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--green);font-size:16px">AND · OR · XOR</span>
+      </div>
+      <div class="num">11 — HARDWARE</div>
+      <h2>Logic Gates &amp; Adder</h2>
+      <p>Explore every gate through its truth table, then toggle inputs on a live full-adder circuit and watch signals light up the wires as gates combine to add three binary digits.</p>
+      <div class="chips"><span class="chip">truth tables</span><span class="chip">full adder</span><span class="chip">live wires</span></div>
+      <span class="go">Open tool <span class="arrow">→</span></span>
+    </a>
+
+    <a class="card" href="lmc.html" style="--accent:var(--cyan);--glow:rgba(22,240,255,.22)">
+      <div class="viz">
+        <span class="bit" style="color:var(--cyan);font-size:15px">INP·ADD·OUT</span>
+      </div>
+      <div class="num">12 — PROCESSOR</div>
+      <h2>Little Man Computer</h2>
+      <p>Write real assembly, assemble it into numbered mailboxes, and run it instruction by instruction — watching the accumulator, program counter and memory change. The programmable sequel to the FDE cycle.</p>
+      <div class="chips"><span class="chip">assembler</span><span class="chip">step debugger</span><span class="chip">labels</span></div>
+      <span class="go">Open tool <span class="arrow">→</span></span>
+    </a>
+  </div>
+
+  <footer>
+    Built as teaching aids. Open either page and use <code>Pause</code> / <code>Step</code> / <code>Speed</code> to explore.
+  </footer>
+</div>
+</body>
+</html>
