@@ -1,0 +1,734 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>OOP Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: squared-paper worksheet like the other revision pages. Class code (the blueprint) on the left, live objects and narration on the right. */
+:root {
+  --paper: #eef2f7; --grid: #dde4ee; --surface: #ffffff; --unit: #f3f6fa;
+  --ink: #14213a; --ink-soft: #56637a; --line: #a6b2c4;
+  --cls: #2459c4; --obj: #0b8587; --priv: #c2365b; --pub: #1b7f47; --inh: #b26f06; --poly: #6a4bd0;
+  --on-accent: #ffffff; --ok: #1b7f47; --bad: #c0392b;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+    --cls: #6f9bff; --obj: #33c3c1; --priv: #ff6f91; --pub: #49c682; --inh: #f0a832; --poly: #a68dff; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+  --cls: #6f9bff; --obj: #33c3c1; --priv: #ff6f91; --pub: #49c682; --inh: #f0a832; --poly: #a68dff; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px; color: var(--ink); font: 16px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(1.7rem, 3.2vw, 2.5rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; font-weight: 700; } h3 { font-size: 1rem; font-weight: 700; }
+p { margin: 0; }
+code { font-family: var(--font-mono); background: var(--unit); border-radius: 4px; padding: 0 4px; font-size: .92em; }
+.t-cls { color: var(--cls); font-weight: 700; } .t-obj { color: var(--obj); font-weight: 700; } .t-priv { color: var(--priv); font-weight: 700; } .t-pub { color: var(--pub); font-weight: 700; } .t-inh { color: var(--inh); font-weight: 700; } .t-poly { color: var(--poly); font-weight: 700; }
+
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.top p { margin-top: 4px; color: var(--ink-soft); max-width: 64ch; }
+.global { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.global label { font-size: .9rem; display: inline-flex; align-items: center; gap: 6px; }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: 700 .85rem var(--font-body); color: var(--ink-soft); background: var(--surface); border: 0; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+select, input[type="text"], input[type="number"] { font: 15px/1.4 var(--font-mono); color: var(--ink); background: var(--unit); border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px; max-width: 100%; }
+select { font-family: var(--font-body); font-size: .9rem; }
+input[type="text"], input[type="number"] { width: 100%; }
+select:focus, input:focus, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--cls) 55%, transparent); outline-offset: 2px; }
+.toggle { cursor: pointer; } .toggle input { width: 18px; height: 18px; accent-color: var(--cls); }
+.score { font-size: .9rem; color: var(--ink-soft); }
+
+.intro { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.term { background: var(--unit); border-radius: 10px; padding: 10px 12px; border-left: 4px solid var(--tc); }
+.term b { font-family: var(--font-display); color: var(--tc); display: block; }
+.term p { font-size: .9rem; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.tabs button { flex: none; font: 700 .92rem var(--font-body); color: var(--ink-soft); background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tabs button:hover:not([aria-selected="true"]) { background: var(--unit); color: var(--ink); }
+
+.tab { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tab.wide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1000px) { .tab { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.field-row { display: grid; gap: 4px; } .field-row label { font-size: .85rem; color: var(--ink-soft); }
+.hint { font-size: .85rem; color: var(--ink-soft); }
+.msg { font-size: .9rem; min-height: 1.2em; } .msg.err { color: var(--bad); }
+.btn { font: 700 .92rem var(--font-body); color: var(--ink); background: var(--surface); border: 1.5px solid var(--ink); border-radius: 8px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--unit); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 85%, var(--paper)); }
+.btn.small { font-size: .8rem; padding: 4px 9px; border-width: 1px; font-family: var(--font-mono); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn kbd { font: 600 .72rem var(--font-mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .7; }
+.method { background: var(--unit); border-radius: 10px; padding: 12px 14px; }
+.method h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-family: var(--font-body); margin-bottom: 6px; }
+.method ol, .method ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; font-size: .93rem; }
+.method ol li::marker { font-family: var(--font-display); font-weight: 800; color: var(--cls); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Code */
+pre.code { margin: 0; background: var(--unit); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13.5px/1.6 var(--font-mono); counter-reset: ln; }
+pre.code .ln { display: block; padding: 0 12px 0 44px; position: relative; white-space: pre; min-width: max-content; }
+pre.code .ln::before { counter-increment: ln; content: counter(ln); position: absolute; left: 12px; color: var(--line); width: 22px; text-align: right; }
+pre.code .ln.cur { background: color-mix(in srgb, var(--cls) 18%, var(--surface)); box-shadow: inset 3px 0 0 var(--cls); }
+pre.code .ln.hl { background: color-mix(in srgb, var(--poly) 14%, var(--surface)); box-shadow: inset 3px 0 0 var(--poly); }
+pre.code .kw { color: var(--cls); font-weight: 700; } pre.code .pv { color: var(--priv); font-weight: 700; } pre.code .pb { color: var(--pub); font-weight: 700; } pre.code .cm { color: var(--ink-soft); }
+.classtabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.classtabs button { font: 700 .82rem var(--font-mono); color: var(--ink-soft); background: var(--surface); border: 1.5px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.classtabs button[aria-pressed="true"] { border-color: var(--cls); color: var(--cls); background: color-mix(in srgb, var(--cls) 10%, var(--surface)); }
+.codehead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.codehead .lang { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+
+/* Objects */
+.objects { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.objcard { border: 2px solid var(--obj); border-radius: 12px; background: var(--surface); padding: 10px 12px; display: grid; gap: 8px; min-width: 0; transition: box-shadow .2s; }
+.objcard.flash { box-shadow: 0 0 0 4px color-mix(in srgb, var(--obj) 35%, transparent); }
+.objcard.ghost { border-style: dashed; opacity: .85; }
+.objhead { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.objname { font: 800 1.05rem var(--font-mono); color: var(--obj); }
+.objcls { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; color: var(--cls); }
+.attrs { display: grid; gap: 3px; font: .88rem var(--font-mono); }
+.attrs div { display: flex; justify-content: space-between; gap: 8px; background: var(--unit); border-radius: 6px; padding: 2px 8px; }
+.attrs .vis { font: 700 .62rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; align-self: center; }
+.attrs .vis.priv { color: var(--priv); } .attrs .vis.pub { color: var(--pub); }
+.attrs b { overflow-wrap: anywhere; } .attrs .unset { color: var(--line); }
+.attrs div.inh { border-left: 3px solid var(--inh); }
+.attrs div.changed b { color: var(--obj); }
+.meths { display: flex; flex-wrap: wrap; gap: 4px; }
+.meths .btn.small.inh { border-color: var(--inh); color: var(--inh); }
+.meths .btn.small.ovr { border-color: var(--poly); color: var(--poly); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .78rem; color: var(--ink-soft); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+/* Console */
+.console { background: var(--unit); border-radius: 10px; padding: 10px 12px; font: .88rem/1.5 var(--font-mono); display: grid; gap: 6px; max-height: 320px; overflow-y: auto; }
+.console:empty::before { content: "Call a method on an object to see what happens."; font: .88rem var(--font-body); color: var(--ink-soft); }
+.entry { display: grid; gap: 2px; border-left: 3px solid var(--line); padding-left: 10px; }
+.entry .call { font-weight: 700; color: var(--ink); }
+.entry .trace { font-family: var(--font-body); color: var(--ink-soft); font-size: .86rem; }
+.entry .trace b { color: var(--ink); }
+.entry .ret { color: var(--pub); } .entry .err { color: var(--bad); font-family: var(--font-body); }
+.entry.ok { border-color: var(--pub); } .entry.bad { border-color: var(--bad); }
+.entry .out { color: var(--poly); }
+
+/* Walkthrough */
+.wt { display: grid; gap: 12px; }
+.narration { display: grid; gap: 8px; }
+.narr-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stage-tag { font: 800 .76rem var(--font-body); letter-spacing: .1em; text-transform: uppercase; background: var(--cls); color: var(--on-accent); padding: 3px 10px; border-radius: 999px; }
+.stage-tag.done { background: var(--ok); } .stage-tag.ready { background: var(--ink-soft); }
+.step-count { font-size: .85rem; color: var(--ink-soft); }
+.step-title { font-size: 1.25rem; } .step-text { max-width: 70ch; }
+.ask { display: grid; gap: 8px; background: color-mix(in srgb, var(--cls) 8%, var(--surface)); border: 1.5px solid var(--cls); border-radius: 10px; padding: 12px; }
+.ask form { display: flex; flex-wrap: wrap; gap: 8px; } .ask input { flex: 1 1 140px; width: auto; } .ask p { font-weight: 700; }
+.fb { font-size: .9rem; min-height: 1.3em; } .fb.ok { color: var(--ok); } .fb.bad { color: var(--bad); }
+.work { display: grid; gap: 8px; }
+
+/* Class diagram */
+.diagram { overflow-x: auto; }
+.diagram svg { display: block; width: 100%; max-width: 760px; height: auto; }
+.diagram .box { fill: var(--surface); stroke: var(--cls); stroke-width: 2; }
+.diagram .title { font: 800 14px var(--font-display); fill: var(--cls); }
+.diagram .row { font: 12px var(--font-mono); fill: var(--ink); }
+.diagram .sep { stroke: var(--cls); stroke-width: 1.5; }
+.diagram .arrow { fill: none; stroke: var(--inh); stroke-width: 2; }
+.diagram .head { fill: var(--surface); stroke: var(--inh); stroke-width: 2; }
+.diagram .lbl { font: 700 11px var(--font-body); fill: var(--inh); }
+
+/* Lookup */
+.chain { display: grid; gap: 6px; }
+.chain div { display: flex; gap: 10px; align-items: center; background: var(--unit); border-radius: 8px; padding: 8px 10px; font-size: .92rem; }
+.chain .cname { font: 700 .9rem var(--font-mono); color: var(--cls); min-width: 150px; }
+.chain .found { border: 1.5px solid var(--pub); } .chain .miss { opacity: .7; }
+
+/* Exam */
+.qcard { border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+.qcard .qhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; align-items: baseline; }
+.marks { font: 700 .75rem var(--font-body); color: var(--on-accent); background: var(--ink-soft); padding: 2px 8px; border-radius: 999px; }
+.answer { background: var(--unit); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+.answer ul { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: .93rem; }
+.answer .mp { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+.answer pre.code { background: var(--surface); }
+.q-fields { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.q-fields label { display: grid; gap: 4px; font-size: .85rem; color: var(--ink-soft); }
+.q-prompt { font-size: 1.05rem; max-width: 72ch; }
+.q-prompt pre.code { margin-top: 8px; }
+
+details.tips { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+details.tips summary { cursor: pointer; font: 700 1.05rem var(--font-display); }
+details.tips ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: .95rem; }
+@media (prefers-reduced-motion: reduce) { .objcard { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Object-oriented programming: blueprints and the things built from them</h1>
+      <p>Classes, objects, attributes, methods, constructors, encapsulation, inheritance and polymorphism, as OCR A Level H446 (topics 1.2.4 and 2.2.1) examines them. Build objects from a bank account class hierarchy, call their methods and watch what runs.</p>
+    </div>
+    <div class="global">
+      <div class="seg" id="langSeg" role="group" aria-label="Code notation"><button type="button" data-lang="erl" aria-pressed="true">OCR pseudocode</button><button type="button" data-lang="py" aria-pressed="false">Python</button></div>
+      <label class="toggle"><input type="checkbox" id="quizOn"> Quiz me</label>
+      <span class="score" id="scoreBox" hidden>Quiz: <span id="score">0 / 0</span></span>
+    </div>
+  </header>
+
+  <section class="intro" aria-label="Key terms">
+    <div class="term" style="--tc:var(--cls)"><b>Class</b><p>A blueprint or template. It defines the attributes (data) and methods (procedures and functions) that every object of that type will have. No data is stored until an object is made.</p></div>
+    <div class="term" style="--tc:var(--obj)"><b>Object</b><p>An instance of a class, created by <code>new</code> (instantiation). Each object has its own copy of the attributes, so two accounts can hold different balances while sharing the same methods.</p></div>
+    <div class="term" style="--tc:var(--priv)"><b>Encapsulation</b><p>Attributes are made <code>private</code> so they can only be read or changed through the class's <code>public</code> methods (getters and setters), which can validate the change.</p></div>
+    <div class="term" style="--tc:var(--inh)"><b>Inheritance</b><p>A subclass <code>inherits</code> the attributes and methods of its parent (superclass) and adds or changes some. <code>super.new()</code> runs the parent's constructor.</p></div>
+    <div class="term" style="--tc:var(--poly)"><b>Polymorphism</b><p>Objects of different classes respond to the same method call in their own way, because a subclass can <em>override</em> a method. Code can treat them all as the parent type.</p></div>
+  </section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="objects" aria-selected="true">Classes and objects</button>
+    <button role="tab" data-tab="ctor" aria-selected="false">The constructor</button>
+    <button role="tab" data-tab="encap" aria-selected="false">Encapsulation</button>
+    <button role="tab" data-tab="inherit" aria-selected="false">Inheritance</button>
+    <button role="tab" data-tab="poly" aria-selected="false">Polymorphism</button>
+    <button role="tab" data-tab="exam" aria-selected="false">Exam questions</button>
+    <button role="tab" data-tab="quiz" aria-selected="false">Quick quiz</button>
+  </nav>
+
+  <!-- Classes and objects -->
+  <section class="tab" id="tab-objects" role="tabpanel">
+    <div class="panel">
+      <div class="panel-head"><h2>The class: a blueprint</h2></div>
+      <div class="classtabs" id="classTabs1"></div>
+      <div class="codehead"><span class="lang" id="langLabel1"></span><span class="hint">Lit lines are the method that just ran</span></div>
+      <pre class="code" id="code1"></pre>
+      <div class="method">
+        <h3>Reading a class definition</h3>
+        <ol>
+          <li><code>class Account</code> names the blueprint. Nothing exists in memory yet.</li>
+          <li><span class="t-priv">private</span> attributes hold the object's data and can only be used inside the class.</li>
+          <li><span class="t-pub">public</span> methods are the interface: the things other code is allowed to call.</li>
+          <li><code>new</code> is the constructor: it runs once, when an object is instantiated, and sets up the attributes.</li>
+          <li>A <b>function</b> returns a value; a <b>procedure</b> does not. Getters are functions; setters and actions are usually procedures.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>The objects: instances of the class</h2><span class="legend"><span><i style="background:var(--obj)"></i>own attribute</span><span><i style="background:var(--inh)"></i>inherited</span><span><i style="background:var(--poly)"></i>overridden method</span></span></span></div>
+      <div class="objects" id="objects"></div>
+      <div class="controls">
+        <label class="hint" for="amount">Amount for deposit / withdraw</label><input type="number" id="amount" value="50" step="1" style="width:110px">
+        <button class="btn" type="button" id="directBtn">Try acc1.balance (direct access)</button>
+      </div>
+      <div class="console" id="console1" aria-live="polite"></div>
+      <h3>Make another object</h3>
+      <div class="controls">
+        <select id="newCls" aria-label="Class"><option value="Account">Account</option><option value="SavingsAccount">SavingsAccount</option><option value="CurrentAccount">CurrentAccount</option></select>
+        <input type="text" id="newHolder" placeholder="holder" value="Dev" style="width:110px" aria-label="Holder">
+        <input type="number" id="newBal" value="120" style="width:100px" aria-label="Opening balance">
+        <input type="number" id="newExtra" value="3" style="width:90px" aria-label="Rate or overdraft limit">
+        <button class="btn primary" type="button" id="newBtn">new</button>
+      </div>
+      <p class="hint" id="newHint"></p>
+    </div>
+  </section>
+
+  <!-- Constructor -->
+  <section class="tab" id="tab-ctor" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Instantiation, step by step</h2>
+      <p class="hint">Choose what to create, then step through what <code>new</code> does.</p>
+      <div class="controls">
+        <select id="ctorCls" aria-label="Class"><option value="Account">Account</option><option value="SavingsAccount" selected>SavingsAccount</option><option value="CurrentAccount">CurrentAccount</option></select>
+        <input type="text" id="ctorHolder" value="Ben" style="width:100px" aria-label="Holder">
+        <input type="number" id="ctorBal" value="250" style="width:100px" aria-label="Opening balance">
+        <input type="number" id="ctorExtra" value="2.5" step="0.5" style="width:90px" aria-label="Rate or limit">
+      </div>
+      <pre class="code" id="ctorLine"></pre>
+      <div class="classtabs" id="classTabs2"></div>
+      <pre class="code" id="code2"></pre>
+      <div class="method">
+        <h3>What a constructor is for</h3>
+        <ul>
+          <li>It is a special method that runs automatically when <code>new</code> creates an object. In OCR pseudocode it is called <code>new</code>; in Python it is <code>__init__</code>.</li>
+          <li>Its job is to put the object into a valid starting state: every attribute gets a value, usually from the parameters.</li>
+          <li>A subclass constructor calls <code>super.new(...)</code> first so the parent's attributes are set up, then sets its own.</li>
+          <li>The variable on the left of <code>=</code> stores a <b>reference</b> to the new object. Two variables can refer to the same object; two <code>new</code> calls make two separate objects.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel"><h2>What happens</h2><div class="objects" id="ctorObj"></div><div class="wt" id="wt-ctor"></div></div>
+  </section>
+
+  <!-- Encapsulation -->
+  <section class="tab" id="tab-encap" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Public and private</h2>
+      <p class="hint">A small class with one public attribute and one private attribute, so you can see the difference when you try to use them from outside.</p>
+      <div class="codehead"><span class="lang" id="langLabel3"></span></div>
+      <pre class="code" id="code3"></pre>
+      <div class="method">
+        <h3>Encapsulation in the mark scheme</h3>
+        <ul>
+          <li>Attributes are declared <span class="t-priv">private</span>, so they cannot be read or changed directly from outside the class.</li>
+          <li>Access is only through <span class="t-pub">public</span> methods: a <b>getter</b> returns the value, a <b>setter</b> changes it.</li>
+          <li>The setter can <b>validate</b>, so the object can never be put into an invalid state (a negative score, an overdrawn account that should not be).</li>
+          <li>The class can change how it stores its data without breaking the code that uses it, because that code only ever used the methods. This reduces bugs and makes large programs easier to maintain.</li>
+          <li>Python note: two leading underscores (<code>__score</code>) mark an attribute as private. Python does not enforce it as strictly as other languages, but the exam treats it as private.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Try it from outside the class</h2>
+      <div class="objects" id="playerObj"></div>
+      <div class="controls" id="encapBtns"></div>
+      <div class="console" id="console3" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Inheritance -->
+  <section class="tab" id="tab-inherit" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>The class hierarchy</h2>
+      <div class="diagram" id="diagram"></div>
+      <p class="hint">Class diagram notation: the name on top, then attributes, then methods. <b>−</b> means private and <b>+</b> means public. The hollow-headed arrow points from the subclass to the class it inherits from.</p>
+      <div class="method">
+        <h3>What inheritance gives you</h3>
+        <ul>
+          <li>The subclass gets every attribute and method of the parent without writing them again: <code>SavingsAccount</code> can <code>deposit</code> even though it never defines it.</li>
+          <li>It can <b>add</b> new attributes and methods (<code>interestRate</code>, <code>addInterest</code>).</li>
+          <li>It can <b>override</b> a method by defining one with the same name (<code>describe</code>, <code>canWithdraw</code>). The subclass version replaces the parent's for objects of the subclass.</li>
+          <li><code>super.new(...)</code> and <code>super.describe()</code> call the parent's version from inside the subclass.</li>
+          <li>A subclass cannot touch its parent's <span class="t-priv">private</span> attributes directly. It uses the parent's public methods, such as <code>getBalance()</code>. That is encapsulation applying to subclasses too.</li>
+          <li>Benefits to state: code reuse, less duplication, easier maintenance (fix the parent once), and a clear "is a" relationship between types.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Which method actually runs?</h2>
+      <p class="hint">When a method is called on an object, the program looks in the object's own class first, then its parent, and so on up the chain.</p>
+      <div class="controls">
+        <select id="lkObj" aria-label="Object"></select>
+        <span>.</span>
+        <select id="lkMeth" aria-label="Method"><option>describe</option><option>deposit</option><option>withdraw</option><option>canWithdraw</option><option>getBalance</option><option>addInterest</option></select>
+        <span>( )</span>
+      </div>
+      <div class="chain" id="chain"></div>
+      <div class="classtabs" id="classTabs4"></div>
+      <pre class="code" id="code4"></pre>
+    </div>
+  </section>
+
+  <!-- Polymorphism -->
+  <section class="tab" id="tab-poly" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>One call, different behaviour</h2>
+      <p class="hint">The loop below does not know or care what kind of account each element is. It calls the same method on each one; each object runs its own class's version.</p>
+      <div class="controls"><select id="polyProg" aria-label="Program"><option value="describe">describe() every account</option><option value="withdraw">withdraw(amount) from every account</option><option value="monthEnd">month end: addInterest where it exists</option></select><input type="number" id="polyAmt" value="150" style="width:100px" aria-label="Amount"></div>
+      <pre class="code" id="polyCode"></pre>
+      <div class="method">
+        <h3>Polymorphism in the exam</h3>
+        <ul>
+          <li>Definition: the same method name can produce different behaviour depending on the class of the object it is called on.</li>
+          <li>In OCR's examples it comes from <b>overriding</b>: a subclass redefines a method inherited from its parent.</li>
+          <li>A variable or array of the parent type (<code>Account</code>) can hold objects of any subclass, so one loop handles them all.</li>
+          <li>Dynamic: which version runs is decided by the object at run time, not by the type written in the code.</li>
+          <li>Benefit: new subclasses can be added without changing the code that uses them.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel"><h2>Run the loop</h2><div class="objects" id="polyObjs"></div><div class="wt" id="wt-poly"></div></div>
+  </section>
+
+  <!-- Exam -->
+  <section class="tab wide" id="tab-exam" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Exam-style questions</h2><span class="hint">In the style of OCR H446 papers. Reveal each answer to self-mark against the mark points.</span></div>
+      <div id="examList" style="display:grid;gap:12px"></div>
+    </div>
+  </section>
+
+  <!-- Quiz -->
+  <section class="tab" id="tab-quiz" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Quick quiz</h2>
+        <select id="qType" aria-label="Question type"><option value="mix">Mixed</option><option value="term">Name the term</option><option value="vis">Public or private?</option><option value="which">Which class's method runs?</option><option value="trace">What is the balance / output?</option></select>
+      </div>
+      <p class="hint">Auto-marked. Terms are single words such as <code>class</code>, <code>object</code>, <code>constructor</code>, <code>encapsulation</code>.</p>
+      <div class="controls"><button class="btn primary" id="newQ" type="button">New question</button><span class="score" id="pScore">Score: 0 / 0</span></div>
+    </div>
+    <div class="panel">
+      <div class="q-prompt" id="qPrompt">Press <b>New question</b> to start.</div>
+      <form id="qForm" autocomplete="off" hidden>
+        <div class="q-fields" id="qFields"></div>
+        <div class="controls" style="margin-top:10px"><button class="btn primary" type="submit">Check</button><button class="btn" type="button" id="qReveal">Show answer</button></div>
+      </form>
+      <div class="fb" id="qFb" role="status"></div>
+    </div>
+  </section>
+
+  <details class="tips">
+    <summary>Exam tips and common mistakes</summary>
+    <ul>
+      <li><b>Class versus object.</b> The class is the definition; an object is a real thing made from it with <code>new</code>. "Account is a class; acc1 is an object (an instance of Account)." Never say the class stores the balance.</li>
+      <li><b>Attribute versus method.</b> Attributes are the data an object holds; methods are what it can do. In a class diagram attributes come first, methods second.</li>
+      <li><b>Write the constructor as <code>new</code></b> in OCR pseudocode: <code>public procedure new(...)</code>. In Python it is <code>def __init__(self, ...)</code>. Do not mix the two.</li>
+      <li><b>Instantiation syntax:</b> <code>acc1 = new Account("Ava", 100)</code>. The arguments must match the constructor's parameters in number and order.</li>
+      <li><b>Calling methods:</b> <code>acc1.deposit(50)</code>, with the object name, a dot, the method and brackets. A function call returns a value, so use it in an expression or print: <code>print(acc1.getBalance())</code>.</li>
+      <li><b>Private means private everywhere outside the class</b>, including subclasses. Give the subclass what it needs through public getters and setters, or call the parent's public methods.</li>
+      <li><b>Inheritance syntax:</b> <code>class SavingsAccount inherits Account</code>, and <code>super.new(...)</code> as the first line of the subclass constructor. Python: <code>class SavingsAccount(Account):</code> and <code>super().__init__(...)</code>.</li>
+      <li><b>Overriding versus overloading.</b> Overriding (same name, redefined in a subclass) is what OCR means by polymorphism. Overloading (same name, different parameters, in one class) is not needed in OCR pseudocode.</li>
+      <li><b>Explain, don't just name.</b> "Encapsulation" on its own earns nothing. Say what is private, how it is accessed, and why that helps (validation, fewer bugs, easier changes).</li>
+      <li><b>Advantages of OOP</b> that get marks: reuse through inheritance, easier maintenance and testing of self-contained classes, encapsulation protecting data, polymorphism letting code handle new types, and classes matching real-world things which helps teams split the work.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const G = { lang: 'erl', quiz: false, score: [0, 0] };
+  const money = n => (Number.isInteger(n) ? String(n) : (Math.round(n * 100) / 100).toString());
+  const q = s => `"${s}"`;
+
+  /* ---------- The class model ---------- */
+  // Each class: parent, attrs (name, visibility, own?), methods (name -> {kind, overrides?}), code in both notations tagged by method.
+  const CLASSES = {
+    Account: { parent: null, attrs: [['holder', 'private'], ['balance', 'private']], ctorParams: ['holder', 'balance'],
+      methods: { new: 'procedure', getBalance: 'function', deposit: 'procedure', canWithdraw: 'function', withdraw: 'function', describe: 'function' },
+      erl: [['class Account', 'head'], ['  private holder', 'attrs'], ['  private balance', 'attrs'], ['', ''], ['  public procedure new(givenHolder, openingBalance)', 'new'], ['    holder = givenHolder', 'new'], ['    balance = openingBalance', 'new'], ['  endprocedure', 'new'], ['', ''], ['  public function getBalance()', 'getBalance'], ['    return balance', 'getBalance'], ['  endfunction', 'getBalance'], ['', ''], ['  public procedure deposit(amount)', 'deposit'], ['    if amount > 0 then', 'deposit'], ['      balance = balance + amount', 'deposit'], ['    endif', 'deposit'], ['  endprocedure', 'deposit'], ['', ''], ['  public function canWithdraw(amount)', 'canWithdraw'], ['    return amount <= balance', 'canWithdraw'], ['  endfunction', 'canWithdraw'], ['', ''], ['  public function withdraw(amount)', 'withdraw'], ['    if canWithdraw(amount) then', 'withdraw'], ['      balance = balance - amount', 'withdraw'], ['      return true', 'withdraw'], ['    else', 'withdraw'], ['      return false', 'withdraw'], ['    endif', 'withdraw'], ['  endfunction', 'withdraw'], ['', ''], ['  public function describe()', 'describe'], ['    return holder + ": £" + str(balance)', 'describe'], ['  endfunction', 'describe'], ['endclass', 'head']],
+      py: [['class Account:', 'head'], ['    def __init__(self, holder, opening_balance):', 'new'], ['        self.__holder = holder          # private', 'new'], ['        self.__balance = opening_balance', 'new'], ['', ''], ['    def get_balance(self):', 'getBalance'], ['        return self.__balance', 'getBalance'], ['', ''], ['    def deposit(self, amount):', 'deposit'], ['        if amount > 0:', 'deposit'], ['            self.__balance = self.__balance + amount', 'deposit'], ['', ''], ['    def can_withdraw(self, amount):', 'canWithdraw'], ['        return amount <= self.__balance', 'canWithdraw'], ['', ''], ['    def withdraw(self, amount):', 'withdraw'], ['        if self.can_withdraw(amount):', 'withdraw'], ['            self.__balance = self.__balance - amount', 'withdraw'], ['            return True', 'withdraw'], ['        else:', 'withdraw'], ['            return False', 'withdraw'], ['', ''], ['    def describe(self):', 'describe'], ['        return f"{self.__holder}: £{self.__balance}"', 'describe']] },
+    SavingsAccount: { parent: 'Account', attrs: [['interestRate', 'private']], ctorParams: ['holder', 'balance', 'interestRate'],
+      methods: { new: 'procedure', addInterest: 'procedure', describe: 'function' },
+      erl: [['class SavingsAccount inherits Account', 'head'], ['  private interestRate', 'attrs'], ['', ''], ['  public procedure new(givenHolder, openingBalance, givenRate)', 'new'], ['    super.new(givenHolder, openingBalance)', 'new'], ['    interestRate = givenRate', 'new'], ['  endprocedure', 'new'], ['', ''], ['  public procedure addInterest()', 'addInterest'], ['    interest = getBalance() * interestRate / 100', 'addInterest'], ['    deposit(interest)', 'addInterest'], ['  endprocedure', 'addInterest'], ['', ''], ['  public function describe()', 'describe'], ['    return super.describe() + " (savings, " + str(interestRate) + "% interest)"', 'describe'], ['  endfunction', 'describe'], ['endclass', 'head']],
+      py: [['class SavingsAccount(Account):', 'head'], ['    def __init__(self, holder, opening_balance, rate):', 'new'], ['        super().__init__(holder, opening_balance)', 'new'], ['        self.__interest_rate = rate', 'new'], ['', ''], ['    def add_interest(self):', 'addInterest'], ['        interest = self.get_balance() * self.__interest_rate / 100', 'addInterest'], ['        self.deposit(interest)', 'addInterest'], ['', ''], ['    def describe(self):', 'describe'], ['        return super().describe() + f" (savings, {self.__interest_rate}% interest)"', 'describe']] },
+    CurrentAccount: { parent: 'Account', attrs: [['overdraftLimit', 'private']], ctorParams: ['holder', 'balance', 'overdraftLimit'],
+      methods: { new: 'procedure', canWithdraw: 'function', describe: 'function' },
+      erl: [['class CurrentAccount inherits Account', 'head'], ['  private overdraftLimit', 'attrs'], ['', ''], ['  public procedure new(givenHolder, openingBalance, givenLimit)', 'new'], ['    super.new(givenHolder, openingBalance)', 'new'], ['    overdraftLimit = givenLimit', 'new'], ['  endprocedure', 'new'], ['', ''], ['  public function canWithdraw(amount)', 'canWithdraw'], ['    return amount <= getBalance() + overdraftLimit', 'canWithdraw'], ['  endfunction', 'canWithdraw'], ['', ''], ['  public function describe()', 'describe'], ['    return super.describe() + " (current, overdraft £" + str(overdraftLimit) + ")"', 'describe'], ['  endfunction', 'describe'], ['endclass', 'head']],
+      py: [['class CurrentAccount(Account):', 'head'], ['    def __init__(self, holder, opening_balance, limit):', 'new'], ['        super().__init__(holder, opening_balance)', 'new'], ['        self.__overdraft_limit = limit', 'new'], ['', ''], ['    def can_withdraw(self, amount):', 'canWithdraw'], ['        return amount <= self.get_balance() + self.__overdraft_limit', 'canWithdraw'], ['', ''], ['    def describe(self):', 'describe'], ['        return super().describe() + f" (current, overdraft £{self.__overdraft_limit})"', 'describe']] }
+  };
+  const PY_NAME = { getBalance: 'get_balance', canWithdraw: 'can_withdraw', addInterest: 'add_interest', new: '__init__' };
+  const mName = m => (G.lang === 'py' ? (PY_NAME[m] || m) : m);
+  const chain = cls => { const out = []; let c = cls; while (c) { out.push(c); c = CLASSES[c].parent; } return out; };
+  const allAttrs = cls => chain(cls).reverse().flatMap(c => CLASSES[c].attrs.map(([n, v]) => ({ n, v, from: c })));
+  const findMethod = (cls, m) => chain(cls).find(c => CLASSES[c].methods[m]) || null;
+  const publicMethods = cls => { const seen = new Set(); const list = []; chain(cls).forEach(c => Object.keys(CLASSES[c].methods).forEach(m => { if (m !== 'new' && !seen.has(m)) { seen.add(m); list.push({ m, from: c, overrides: c !== 'Account' && !!CLASSES.Account.methods[m] }); } })); return list; };
+
+  /* Method behaviour: each returns {ret, trace:[...], changed:[attr names]} and mutates obj.s. `T` collects narration. */
+  function call(obj, m, args, T, depth = 0) {
+    const where = findMethod(obj.cls, m);
+    if (!where) { T.push(`<b>${obj.name}</b> has no method ${m}: not in ${obj.cls}${CLASSES[obj.cls].parent ? ' or its parent' : ''}. Error.`); return { error: true }; }
+    const ind = depth ? '↳ ' : '';
+    const s = obj.s;
+    switch (m) {
+      case 'getBalance': T.push(`${ind}<b>${where}.${mName('getBalance')}</b> runs on ${obj.name}${where !== obj.cls ? ' (inherited)' : ''}: returns balance = ${money(s.balance)}.`); return { ret: s.balance };
+      case 'deposit': { const a = args[0]; if (a > 0) { s.balance = s.balance + a; T.push(`${ind}<b>${where}.${mName('deposit')}</b> runs on ${obj.name}${where !== obj.cls ? ' (inherited)' : ''}: ${money(a)} > 0, so balance = ${money(s.balance - a)} + ${money(a)} = <b>${money(s.balance)}</b>.`); return { changed: ['balance'] }; } T.push(`${ind}<b>${where}.${mName('deposit')}</b> runs on ${obj.name}: ${money(a)} is not > 0, so the if is false and nothing changes. The validation protected the balance.`); return {}; }
+      case 'canWithdraw': { const a = args[0]; if (where === 'CurrentAccount') { const ok = a <= s.balance + s.overdraftLimit; T.push(`${ind}<b>CurrentAccount.${mName('canWithdraw')}</b> runs (overrides Account's): ${money(a)} <= ${money(s.balance)} + ${money(s.overdraftLimit)} is ${ok}.`); return { ret: ok }; } const ok = a <= s.balance; T.push(`${ind}<b>Account.${mName('canWithdraw')}</b> runs: ${money(a)} <= ${money(s.balance)} is ${ok}.`); return { ret: ok }; }
+      case 'withdraw': { const a = args[0]; T.push(`${ind}<b>Account.${mName('withdraw')}</b> runs on ${obj.name}${obj.cls !== 'Account' ? ' (inherited: neither subclass redefines withdraw)' : ''}. It calls canWithdraw(${money(a)})…`); const r = call(obj, 'canWithdraw', [a], T, depth + 1); if (r.ret) { s.balance = s.balance - a; T.push(`${ind}…true, so balance = ${money(s.balance + a)} − ${money(a)} = <b>${money(s.balance)}</b>; returns true.`); return { ret: true, changed: ['balance'] }; } T.push(`${ind}…false, so the balance stays ${money(s.balance)}; returns false.`); return { ret: false }; }
+      case 'describe': { if (where === 'SavingsAccount') { T.push(`${ind}<b>SavingsAccount.describe</b> runs (overrides Account's). It starts with super.describe()…`); const base = call(obj, 'describeBase', [], T, depth + 1).ret; const v = `${base} (savings, ${money(s.interestRate)}% interest)`; T.push(`${ind}…then adds its own detail: returns ${q(v)}.`); return { ret: v }; } if (where === 'CurrentAccount') { T.push(`${ind}<b>CurrentAccount.describe</b> runs (overrides Account's). It starts with super.describe()…`); const base = call(obj, 'describeBase', [], T, depth + 1).ret; const v = `${base} (current, overdraft £${money(s.overdraftLimit)})`; T.push(`${ind}…then adds its own detail: returns ${q(v)}.`); return { ret: v }; } const v = `${s.holder}: £${money(s.balance)}`; T.push(`${ind}<b>Account.describe</b> runs on ${obj.name}: returns ${q(v)}.`); return { ret: v }; }
+      case 'addInterest': { const i = Math.round(s.balance * s.interestRate) / 100; T.push(`${ind}<b>SavingsAccount.${mName('addInterest')}</b> runs on ${obj.name}: interest = ${money(s.balance)} × ${money(s.interestRate)} / 100 = ${money(i)}. It calls the inherited deposit(${money(i)})…`); const r = call(obj, 'deposit', [i], T, depth + 1); return { changed: r.changed || [] }; }
+    }
+    if (m === 'describeBase') { const v = `${s.holder}: £${money(s.balance)}`; T.push(`${ind}<b>Account.describe</b> (the parent's version) returns ${q(v)}.`); return { ret: v }; }
+    return {};
+  }
+  function construct(cls, name, args) {
+    const s = {};
+    const o = { cls, name, s };
+    const [holder, bal, extra] = args;
+    s.holder = holder; s.balance = Number(bal);
+    if (cls === 'SavingsAccount') s.interestRate = Number(extra);
+    if (cls === 'CurrentAccount') s.overdraftLimit = Number(extra);
+    return o;
+  }
+  const ctorArgs = (cls, holder, bal, extra) => (cls === 'Account' ? `${q(holder)}, ${money(Number(bal))}` : `${q(holder)}, ${money(Number(bal))}, ${money(Number(extra))}`);
+  const newLine = (cls, name, holder, bal, extra) => (G.lang === 'py' ? `${name} = ${cls}(${ctorArgs(cls, holder, bal, extra)})` : `${name} = new ${cls}(${ctorArgs(cls, holder, bal, extra)})`);
+  const callLine = (name, m, args) => `${name}.${mName(m)}(${(args || []).map(a => (typeof a === 'string' ? q(a) : money(a))).join(', ')})`;
+
+  /* ---------- Rendering helpers ---------- */
+  function codeHTML(cls, hlMethod, hlClass = 'cur') {
+    const lines = CLASSES[cls][G.lang];
+    return lines.map(([t, tag]) => {
+      let h = esc(t);
+      h = h.replace(/\b(class|inherits|public|private|procedure|function|endprocedure|endfunction|endclass|return|if|then|else|endif|new|super|def|self|True|False|None)\b/g, '<span class="kw">$1</span>');
+      h = h.replace(/<span class="kw">private<\/span>/g, '<span class="pv">private</span>').replace(/<span class="kw">public<\/span>/g, '<span class="pb">public</span>');
+      h = h.replace(/(#.*)$/, '<span class="cm">$1</span>');
+      return `<span class="ln${hlMethod && tag === hlMethod ? ' ' + hlClass : ''}">${h || ' '}</span>`;
+    }).join('');
+  }
+  function classTabsHTML(cur) { return Object.keys(CLASSES).map(c => `<button type="button" data-cls="${c}" aria-pressed="${c === cur}">${c}</button>`).join(''); }
+  function objCardHTML(o, opts = {}) {
+    const attrs = allAttrs(o.cls);
+    const vals = opts.partial || o.s;
+    const a = attrs.map(({ n, v, from }) => { const has = n in vals && vals[n] !== undefined; const val = has ? (typeof vals[n] === 'string' ? q(vals[n]) : money(vals[n])) : '?'; return `<div class="${from !== o.cls ? 'inh' : ''}${opts.changed && opts.changed.includes(n) ? ' changed' : ''}"><span><span class="vis ${v === 'private' ? 'priv' : 'pub'}">${v === 'private' ? '−' : '+'}</span> ${n}</span><b class="${has ? '' : 'unset'}">${esc(val)}</b></div>`; }).join('');
+    const meths = opts.noMethods ? '' : `<div class="meths">${publicMethods(o.cls).map(({ m, from, overrides }) => { const needsAmt = m === 'deposit' || m === 'withdraw' || m === 'canWithdraw'; return `<button type="button" class="btn small${from !== o.cls ? ' inh' : overrides ? ' ovr' : ''}" data-obj="${o.name}" data-m="${m}" title="defined in ${from}">${mName(m)}(${needsAmt ? 'amount' : ''})</button>`; }).join('')}</div>`;
+    return `<div class="objcard${opts.ghost ? ' ghost' : ''}" data-obj="${o.name}"><div class="objhead"><span class="objname">${esc(o.name)}</span><span class="objcls">${opts.ghost ? 'being created: ' : 'instance of '}${o.cls}</span></div><div class="attrs">${a}</div>${meths}</div>`;
+  }
+  function logEntry(box, callText, trace, ret, cls) {
+    const e = document.createElement('div'); e.className = 'entry ' + (cls || '');
+    e.innerHTML = `<div class="call">${esc(callText)}</div>${trace.map(t => `<div class="trace">${t}</div>`).join('')}${ret !== undefined ? `<div class="${cls === 'bad' ? 'err' : 'ret'}">${ret}</div>` : ''}`;
+    box.prepend(e);
+  }
+
+  /* ---------- Tab 1: objects workspace ---------- */
+  const OBJS = [construct('Account', 'acc1', ['Ava', 100]), construct('SavingsAccount', 'acc2', ['Ben', 250, 2.5]), construct('CurrentAccount', 'acc3', ['Cara', 50, 200])];
+  let cls1 = 'Account', hl1 = null;
+  function renderCode1() { $('#classTabs1').innerHTML = classTabsHTML(cls1); $('#code1').innerHTML = codeHTML(cls1, hl1); $('#langLabel1').textContent = G.lang === 'erl' ? 'OCR pseudocode' : 'Python'; }
+  function renderObjects(changedName, changed) { $('#objects').innerHTML = OBJS.map(o => objCardHTML(o, { changed: o.name === changedName ? changed : null })).join(''); if (changedName) { const card = $(`#objects .objcard[data-obj="${changedName}"]`); if (card) { card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 700); } } }
+  $('#classTabs1').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) { cls1 = b.dataset.cls; hl1 = null; renderCode1(); } });
+  $('#objects').addEventListener('click', ev => {
+    const b = ev.target.closest('button[data-m]'); if (!b) return;
+    const o = OBJS.find(x => x.name === b.dataset.obj); const m = b.dataset.m;
+    const needsAmt = m === 'deposit' || m === 'withdraw' || m === 'canWithdraw';
+    const amt = Number($('#amount').value) || 0; const args = needsAmt ? [amt] : [];
+    const T = []; const r = call(o, m, args, T);
+    const kind = CLASSES[findMethod(o.cls, m)].methods[m];
+    let ret;
+    if (r.ret !== undefined) ret = `returns ${typeof r.ret === 'string' ? q(r.ret) : String(r.ret)}${kind === 'function' ? '' : ''}`;
+    else ret = `(procedure: no return value)`;
+    logEntry($('#console1'), callLine(o.name, m, args), T, ret, r.ret === false ? 'bad' : 'ok');
+    cls1 = findMethod(o.cls, m); hl1 = m; renderCode1();
+    renderObjects(o.name, r.changed || []);
+  });
+  $('#directBtn').addEventListener('click', () => {
+    const line = G.lang === 'py' ? 'print(acc1.__balance)' : 'print(acc1.balance)';
+    logEntry($('#console1'), line, [`balance is declared <b>private</b> in Account, so it can only be used by code <em>inside</em> the class. From outside, the only way to read it is the public getter: <b>${callLine('acc1', 'getBalance', [])}</b>.`], 'Error: cannot access private attribute balance from outside the class', 'bad');
+    cls1 = 'Account'; hl1 = 'attrs'; renderCode1();
+  });
+  function updateNewHint() { const c = $('#newCls').value; $('#newExtra').hidden = c === 'Account'; $('#newExtra').placeholder = c === 'SavingsAccount' ? 'rate %' : 'overdraft'; $('#newHint').innerHTML = `This will run: <code>${esc(newLine(c, 'acc' + (OBJS.length + 1), $('#newHolder').value || 'Dev', $('#newBal').value || 0, $('#newExtra').value || 0))}</code>`; }
+  ['#newCls', '#newHolder', '#newBal', '#newExtra'].forEach(s => $(s).addEventListener('input', updateNewHint));
+  $('#newBtn').addEventListener('click', () => {
+    if (OBJS.length >= 8) { $('#newHint').textContent = 'Eight objects is plenty for one screen.'; return; }
+    const c = $('#newCls').value, name = 'acc' + (OBJS.length + 1);
+    const o = construct(c, name, [$('#newHolder').value || 'Dev', Number($('#newBal').value) || 0, Number($('#newExtra').value) || 0]);
+    OBJS.push(o); renderObjects(name, Object.keys(o.s));
+    logEntry($('#console1'), newLine(c, name, o.s.holder, o.s.balance, o.s.interestRate ?? o.s.overdraftLimit), [`<b>new</b> creates a fresh object in memory and runs ${c}'s constructor with these arguments. ${name} now refers to it. It has its own copy of every attribute: changing ${name} never changes the other objects.`], undefined, 'ok');
+    cls1 = c; hl1 = 'new'; renderCode1(); updateNewHint(); fillLookupObjs(); renderPolyObjs();
+  });
+
+  /* ---------- Walkthrough component ---------- */
+  function makeWalkthrough(root, opts = {}) {
+    root.innerHTML = `<div class="controls"><button class="btn primary" data-act="next" type="button">Next step <kbd>→</kbd></button><button class="btn" data-act="finish" type="button">Run to the end</button><button class="btn" data-act="reset" type="button">Restart</button></div>
+      <div class="narration" aria-live="polite"><div class="narr-top"><span class="stage-tag ready">Ready</span><span class="step-count"></span></div><h3 class="step-title"></h3><div class="step-text"></div>
+      <div class="ask" hidden><p class="qq"></p><form autocomplete="off"><input type="text" aria-label="Your answer" spellcheck="false"><button class="btn primary" type="submit">Check</button><button class="btn" type="button" data-act="show">Show me</button></form><div class="fb" role="status"></div></div></div>
+      <div class="work"></div>`;
+    const el = { next: root.querySelector('[data-act="next"]'), finish: root.querySelector('[data-act="finish"]'), reset: root.querySelector('[data-act="reset"]'), tag: root.querySelector('.stage-tag'), count: root.querySelector('.step-count'), title: root.querySelector('.step-title'), text: root.querySelector('.step-text'), ask: root.querySelector('.ask'), qq: root.querySelector('.qq'), form: root.querySelector('form'), input: root.querySelector('input'), show: root.querySelector('[data-act="show"]'), fb: root.querySelector('.fb'), work: root.querySelector('.work') };
+    const w = { steps: [], i: -1, pending: null, intro: '' };
+    function buttons() { const done = w.i >= w.steps.length - 1; el.next.disabled = done || !w.steps.length; el.finish.disabled = done || !w.steps.length; el.reset.disabled = w.i < 0; }
+    function showIntro() { el.tag.textContent = 'Ready'; el.tag.className = 'stage-tag ready'; el.count.textContent = w.steps.length ? `${w.steps.length} steps` : ''; el.title.textContent = w.steps.length ? 'Press Next step to begin' : 'Nothing to run'; el.text.innerHTML = w.intro; el.work.innerHTML = ''; el.ask.hidden = true; w.pending = null; if (opts.onStep) opts.onStep(null); buttons(); }
+    function reveal(st) { w.i++; const last = w.i === w.steps.length - 1; el.tag.textContent = last ? 'Done' : `Step ${w.i + 1}`; el.tag.className = 'stage-tag' + (last ? ' done' : ''); el.count.textContent = `${w.i + 1} of ${w.steps.length}`; el.title.textContent = st.title; el.text.innerHTML = st.text; el.work.innerHTML = st.work || ''; if (opts.onStep) opts.onStep(st); buttons(); }
+    function next() { if (w.pending) { el.input.focus(); return; } const st = w.steps[w.i + 1]; if (!st) return; if (G.quiz && st.q) { w.pending = st; el.qq.textContent = st.q.q; el.input.value = ''; el.fb.textContent = ''; el.fb.className = 'fb'; el.ask.hidden = false; el.input.focus({ preventScroll: true }); } else reveal(st); }
+    el.form.addEventListener('submit', ev => { ev.preventDefault(); if (!w.pending) return; const ok = checkAnswer(el.input.value, w.pending.q); if (ok) { G.score[0]++; G.score[1]++; renderScore(); el.fb.textContent = 'Correct.'; el.fb.className = 'fb ok'; const st = w.pending; w.pending = null; setTimeout(() => { el.ask.hidden = true; reveal(st); }, 450); } else { el.fb.textContent = 'Not quite. Try again, or press Show me.'; el.fb.className = 'fb bad'; } });
+    el.show.addEventListener('click', () => { if (!w.pending) return; G.score[1]++; renderScore(); const st = w.pending; w.pending = null; el.ask.hidden = true; reveal(st); });
+    el.next.addEventListener('click', next);
+    el.finish.addEventListener('click', () => { w.pending = null; el.ask.hidden = true; while (w.i < w.steps.length - 1) reveal(w.steps[w.i + 1]); });
+    el.reset.addEventListener('click', () => { w.i = -1; showIntro(); });
+    return { load(steps, intro = '') { w.steps = steps || []; w.i = -1; w.intro = intro; showIntro(); }, next };
+  }
+  function checkAnswer(given, qd) {
+    const g = String(given).trim().toLowerCase().replace(/^"|"$/g, ''); const a = String(qd.a).toLowerCase();
+    if (qd.kind === 'num') { const n = Number(g.replace(/[£,]/g, '')); return g !== '' && isFinite(n) && Math.abs(n - Number(qd.a)) < 1e-6; }
+    if (a === 'yes' || a === 'true') return ['yes', 'y', 'true'].includes(g); if (a === 'no' || a === 'false') return ['no', 'n', 'false'].includes(g);
+    return g === a || (qd.alt || []).includes(g);
+  }
+  function renderScore() { $('#score').textContent = `${G.score[0]} / ${G.score[1]}`; $('#scoreBox').hidden = !G.quiz; }
+  $('#quizOn').addEventListener('change', ev => { G.quiz = ev.target.checked; renderScore(); });
+
+  /* ---------- Tab 2: constructor ---------- */
+  let cls2 = 'SavingsAccount', hl2 = null;
+  const WTc = makeWalkthrough($('#wt-ctor'), { onStep: st => { if (st && st.cls) { cls2 = st.cls; hl2 = st.m || null; } else { hl2 = null; } $('#classTabs2').innerHTML = classTabsHTML(cls2); $('#code2').innerHTML = codeHTML(cls2, hl2); $('#ctorObj').innerHTML = st && st.obj ? objCardHTML(st.obj, { partial: st.partial, ghost: !st.final, noMethods: !st.final, changed: st.changed }) : ''; } });
+  function ctorSteps() {
+    const cls = $('#ctorCls').value, holder = $('#ctorHolder').value || 'Ben', bal = Number($('#ctorBal').value) || 0, extra = Number($('#ctorExtra').value) || 0;
+    const name = 'acc';
+    const obj = construct(cls, name, [holder, bal, extra]);
+    const params = CLASSES[cls].erl.find(l => l[1] === 'new')[0].match(/\((.*)\)/)[1];
+    const steps = [];
+    const line = newLine(cls, name, holder, bal, extra);
+    steps.push({ title: `${G.lang === 'py' ? cls + '(…)' : 'new ' + cls + '(…)'}: reserve memory for a new object`, cls, m: 'head', obj, partial: {}, text: `The right-hand side runs first. <code>${esc(line.split('= ')[1])}</code> creates a brand-new, empty <b>${cls}</b> object in memory. It has a slot for every attribute the class defines${CLASSES[cls].parent ? ', including the ones inherited from ' + CLASSES[cls].parent : ''}, but none of them has a value yet.` });
+    const extraName = cls === 'SavingsAccount' ? 'interestRate' : 'overdraftLimit';
+    if (cls === 'Account') {
+      steps.push({ title: 'The constructor runs', cls, m: 'new', obj, partial: {}, text: `Because an object is being created, its constructor <code>${mName('new')}</code> is called automatically. The arguments are copied into the parameters: ${G.lang === 'py' ? `holder = ${q(holder)}, opening_balance = ${money(bal)}` : `givenHolder = ${q(holder)}, openingBalance = ${money(bal)}`}.`, q: { q: 'What is the name of the special method that runs when an object is created?', a: 'constructor', alt: ['new', '__init__', 'the constructor'] } });
+      steps.push({ title: 'holder is set', cls, m: 'new', obj, partial: { holder }, changed: ['holder'], text: `The first line of the constructor copies the parameter into the private attribute: holder = ${q(holder)}. The attribute belongs to <em>this</em> object only.` });
+      steps.push({ title: 'balance is set', cls, m: 'new', obj, partial: { holder, balance: bal }, changed: ['balance'], text: `balance = ${money(bal)}. Every attribute now has a value, so the object is in a valid state. The constructor finishes.` });
+    } else {
+      steps.push({ title: `${cls}'s constructor runs`, cls, m: 'new', obj, partial: {}, text: `The constructor of the class named after <code>new</code> runs: <code>${cls}.${mName('new')}</code>, with ${G.lang === 'py' ? `holder = ${q(holder)}, opening_balance = ${money(bal)}, ${cls === 'SavingsAccount' ? 'rate' : 'limit'} = ${money(extra)}` : `givenHolder = ${q(holder)}, openingBalance = ${money(bal)}, ${cls === 'SavingsAccount' ? 'givenRate' : 'givenLimit'} = ${money(extra)}`}. Its first line is <code>${G.lang === 'py' ? 'super().__init__(…)' : 'super.new(…)'}</code>.`, q: { q: `Which class's constructor does super.new call?`, a: 'account', alt: ['the parent', 'parent', 'superclass', 'the superclass'] } });
+      steps.push({ title: 'super.new: the parent constructor runs first', cls: 'Account', m: 'new', obj, partial: {}, text: `<code>${G.lang === 'py' ? 'super().__init__' : 'super.new'}</code> hands the first two arguments to <b>Account</b>'s constructor. This is how the inherited attributes get set up; the subclass cannot assign <code>holder</code> or <code>balance</code> itself because they are private to Account.` });
+      steps.push({ title: 'Account sets holder and balance', cls: 'Account', m: 'new', obj, partial: { holder, balance: bal }, changed: ['holder', 'balance'], text: `holder = ${q(holder)} and balance = ${money(bal)}. Account's constructor finishes and control returns to ${cls}'s constructor.` });
+      steps.push({ title: `${cls} sets its own attribute`, cls, m: 'new', obj, partial: { holder, balance: bal, [extraName]: extra }, changed: [extraName], text: `Back in <code>${cls}.${mName('new')}</code>, the remaining line sets ${extraName} = ${money(extra)}. Every attribute, inherited and own, now has a value.` });
+    }
+    steps.push({ title: `${name} refers to the finished object`, cls, m: 'head', obj, partial: obj.s, final: true, text: `The constructor has finished, so <code>new</code> hands back a <b>reference</b> to the object and the assignment stores it in <code>${name}</code>. From now on <code>${name}.describe()</code> or <code>${name}.deposit(50)</code> acts on this object. Running the same line again would create a <em>second</em>, separate object with its own attributes.`, q: { q: 'Does the variable hold the object itself or a reference to it?', a: 'reference', alt: ['a reference', 'reference to it', 'pointer', 'address'] } });
+    return steps;
+  }
+  function ctorLoad() { const cls = $('#ctorCls').value; $('#ctorExtra').hidden = cls === 'Account'; $('#ctorLine').innerHTML = `<span class="ln">${esc(newLine(cls, 'acc', $('#ctorHolder').value || 'Ben', $('#ctorBal').value || 0, $('#ctorExtra').value || 0))}</span>`; cls2 = cls; WTc.load(ctorSteps(), 'Step through what this one line of code makes happen.'); }
+  ['#ctorCls', '#ctorHolder', '#ctorBal', '#ctorExtra'].forEach(s => $(s).addEventListener('input', ctorLoad));
+  $('#classTabs2').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) { cls2 = b.dataset.cls; $('#classTabs2').innerHTML = classTabsHTML(cls2); $('#code2').innerHTML = codeHTML(cls2, null); } });
+
+  /* ---------- Tab 3: encapsulation sandbox ---------- */
+  const PLAYER_CODE = {
+    erl: ['class Player', '  public name', '  private score', '', '  public procedure new(givenName)', '    name = givenName', '    score = 0', '  endprocedure', '', '  public function getScore()', '    return score', '  endfunction', '', '  public procedure setScore(newScore)', '    if newScore >= 0 then', '      score = newScore', '    endif', '  endprocedure', 'endclass', '', 'p = new Player("Kai")'],
+    py: ['class Player:', '    def __init__(self, given_name):', '        self.name = given_name      # public', '        self.__score = 0            # private', '', '    def get_score(self):', '        return self.__score', '', '    def set_score(self, new_score):', '        if new_score >= 0:', '            self.__score = new_score', '', 'p = Player("Kai")']
+  };
+  const player = { cls: 'Player', name: 'p', s: { name: 'Kai', score: 0 } };
+  const PLAYER_ATTRS = [{ n: 'name', v: 'public' }, { n: 'score', v: 'private' }];
+  function playerCard(changed) { const a = PLAYER_ATTRS.map(({ n, v }) => `<div class="${changed && changed.includes(n) ? 'changed' : ''}"><span><span class="vis ${v === 'private' ? 'priv' : 'pub'}">${v === 'private' ? '−' : '+'}</span> ${n}</span><b>${esc(typeof player.s[n] === 'string' ? q(player.s[n]) : player.s[n])}</b></div>`).join(''); return `<div class="objcard" data-obj="p"><div class="objhead"><span class="objname">p</span><span class="objcls">instance of Player</span></div><div class="attrs">${a}</div></div>`; }
+  function renderEncap(changed) {
+    $('#code3').innerHTML = PLAYER_CODE[G.lang].map(t => { let h = esc(t); h = h.replace(/\b(class|public|private|procedure|function|endprocedure|endfunction|endclass|return|if|then|endif|new|def|self)\b/g, '<span class="kw">$1</span>').replace(/<span class="kw">private<\/span>/g, '<span class="pv">private</span>').replace(/<span class="kw">public<\/span>/g, '<span class="pb">public</span>').replace(/(#.*)$/, '<span class="cm">$1</span>'); return `<span class="ln">${h || ' '}</span>`; }).join('');
+    $('#langLabel3').textContent = G.lang === 'erl' ? 'OCR pseudocode' : 'Python';
+    $('#playerObj').innerHTML = playerCard(changed);
+    const py = G.lang === 'py';
+    const B = [
+      ['readName', py ? 'print(p.name)' : 'print(p.name)'], ['setName', py ? 'p.name = "Zed"' : 'p.name = "Zed"'], ['readScore', py ? 'print(p.__score)' : 'print(p.score)'], ['setScoreDirect', py ? 'p.__score = 50' : 'p.score = 50'], ['getter', py ? 'print(p.get_score())' : 'print(p.getScore())'], ['setter', py ? 'p.set_score(50)' : 'p.setScore(50)'], ['setterBad', py ? 'p.set_score(-10)' : 'p.setScore(-10)']
+    ];
+    $('#encapBtns').innerHTML = B.map(([k, t]) => `<button type="button" class="btn small" data-k="${k}">${esc(t)}</button>`).join('');
+  }
+  $('#encapBtns').addEventListener('click', ev => {
+    const b = ev.target.closest('button[data-k]'); if (!b) return; const k = b.dataset.k; const box = $('#console3'); let changed = [];
+    const g = G.lang === 'py';
+    switch (k) {
+      case 'readName': logEntry(box, b.textContent, [`name is <b>public</b>, so code outside the class may read it directly.`], `outputs ${q(player.s.name)}`, 'ok'); break;
+      case 'setName': player.s.name = 'Zed'; changed = ['name']; logEntry(box, b.textContent, [`name is <b>public</b>, so it can be changed directly, with no checks at all. Convenient, but nothing stops a caller setting it to something silly.`], 'name is now "Zed"', 'ok'); break;
+      case 'readScore': logEntry(box, b.textContent, [`score is <b>private</b>: only code inside Player can use it. ${g ? 'Python hides it by renaming it (name mangling), so this raises AttributeError.' : 'The program reports an error.'} Use the getter instead: <b>${g ? 'p.get_score()' : 'p.getScore()'}</b>.`], 'Error: score is private', 'bad'); break;
+      case 'setScoreDirect': logEntry(box, b.textContent, [`Direct assignment to a private attribute from outside is not allowed${g ? ' (in Python this would silently create a different, unrelated attribute, which is why the exam treats it as an error)' : ''}. This is exactly what encapsulation prevents: nobody can bypass the validation in the setter.`], 'Error: score is private', 'bad'); break;
+      case 'getter': logEntry(box, b.textContent, [`The public getter runs inside the class, where score is accessible, and returns its value.`], `outputs ${player.s.score}`, 'ok'); break;
+      case 'setter': player.s.score = 50; changed = ['score']; logEntry(box, b.textContent, [`The public setter runs: 50 >= 0, so the validation passes and score = 50.`], 'score is now 50', 'ok'); break;
+      case 'setterBad': logEntry(box, b.textContent, [`The setter runs: −10 >= 0 is false, so the if is skipped and score stays ${player.s.score}. The object can never hold a negative score, whatever the caller does.`], `rejected: score stays ${player.s.score}`, 'bad'); break;
+    }
+    $('#playerObj').innerHTML = playerCard(changed);
+  });
+
+  /* ---------- Tab 4: inheritance ---------- */
+  function renderDiagram() {
+    const box = (x, y, name, attrs, meths) => { const h = 34 + attrs.length * 16 + 8 + meths.length * 16 + 8; let s = `<rect class="box" x="${x}" y="${y}" width="230" height="${h}" rx="6"/><text class="title" x="${x + 115}" y="${y + 20}" text-anchor="middle">${name}</text><line class="sep" x1="${x}" y1="${y + 28}" x2="${x + 230}" y2="${y + 28}"/>`; attrs.forEach((a, i) => { s += `<text class="row" x="${x + 10}" y="${y + 44 + i * 16}">${a}</text>`; }); const y2 = y + 28 + attrs.length * 16 + 10; s += `<line class="sep" x1="${x}" y1="${y2}" x2="${x + 230}" y2="${y2}"/>`; meths.forEach((m, i) => { s += `<text class="row" x="${x + 10}" y="${y2 + 16 + i * 16}">${m}</text>`; }); return { s, h }; };
+    const A = box(265, 10, 'Account', ['− holder', '− balance'], ['+ new(holder, balance)', '+ getBalance()', '+ deposit(amount)', '+ canWithdraw(amount)', '+ withdraw(amount)', '+ describe()']);
+    const yb = 10 + A.h + 50;
+    const S = box(20, yb, 'SavingsAccount', ['− interestRate'], ['+ new(holder, balance, rate)', '+ addInterest()', '+ describe()']);
+    const Cc = box(510, yb, 'CurrentAccount', ['− overdraftLimit'], ['+ new(holder, balance, limit)', '+ canWithdraw(amount)', '+ describe()']);
+    const ay = 10 + A.h;
+    const arrows = `<path class="arrow" d="M135,${yb} V${ay + 25} H380 V${ay + 12}"/><path class="arrow" d="M625,${yb} V${ay + 25} H380"/><polygon class="head" points="380,${ay} 372,${ay + 14} 388,${ay + 14}"/><text class="lbl" x="390" y="${ay + 24}">inherits</text>`;
+    const H = yb + Math.max(S.h, Cc.h) + 10;
+    $('#diagram').innerHTML = `<svg viewBox="0 0 760 ${H}" role="img" aria-label="Class diagram: SavingsAccount and CurrentAccount inherit from Account">${A.s}${S.s}${Cc.s}${arrows}</svg>`;
+  }
+  let cls4 = 'Account', hl4 = null;
+  function fillLookupObjs() { const sel = $('#lkObj'); const keep = sel.value; sel.innerHTML = OBJS.map(o => `<option value="${o.name}">${o.name} (${o.cls})</option>`).join(''); if ([...sel.options].some(o => o.value === keep)) sel.value = keep; else sel.value = 'acc2'; }
+  function renderLookup() {
+    const o = OBJS.find(x => x.name === $('#lkObj').value) || OBJS[0]; const m = $('#lkMeth').value;
+    const ch = chain(o.cls); let found = null; let html = '';
+    for (const c of ch) { const has = !!CLASSES[c].methods[m]; if (!found && has) found = c; html += `<div class="${!found || found === c ? (has ? 'found' : 'miss') : 'miss'}"><span class="cname">${c}</span><span>${has ? (found === c ? `<b>defines ${mName(m)}</b>${c !== o.cls ? ': inherited by ' + o.cls : ''}${c !== 'Account' && CLASSES.Account.methods[m] ? ' (overrides Account\'s version)' : ''}` : `also defines ${mName(m)}, but it is overridden`) : `does not define ${mName(m)}, look in the parent…`}</span></div>`; if (found) break; }
+    if (!found) html += `<div class="miss"><span class="cname">—</span><span>Not found anywhere: calling ${o.name}.${mName(m)}() is an error. Only ${CLASSES.SavingsAccount.methods[m] ? 'SavingsAccount' : 'no'} objects have it.</span></div>`;
+    $('#chain').innerHTML = html;
+    cls4 = found || o.cls; hl4 = found ? m : null;
+    $('#classTabs4').innerHTML = classTabsHTML(cls4); $('#code4').innerHTML = codeHTML(cls4, hl4, 'hl');
+  }
+  $('#lkObj').addEventListener('change', renderLookup); $('#lkMeth').addEventListener('change', renderLookup);
+  $('#classTabs4').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) { cls4 = b.dataset.cls; $('#classTabs4').innerHTML = classTabsHTML(cls4); $('#code4').innerHTML = codeHTML(cls4, null); } });
+
+  /* ---------- Tab 5: polymorphism ---------- */
+  const WTp = makeWalkthrough($('#wt-poly'), { onStep: st => { renderPolyObjs(st); document.querySelectorAll('#polyCode .ln').forEach((ln, i) => ln.classList.toggle('cur', !!st && i === st.line)); } });
+  let polySnap = null;
+  function renderPolyObjs(st) { const list = st && st.objs ? st.objs : OBJS; $('#polyObjs').innerHTML = list.map(o => objCardHTML(o, { noMethods: true, changed: st && st.changedName === o.name ? st.changed : null })).join(''); }
+  function polyCode() {
+    const n = OBJS.length, prog = $('#polyProg').value, amt = money(Number($('#polyAmt').value) || 0);
+    const py = G.lang === 'py';
+    const decl = py ? [`accounts = [${OBJS.map(o => o.name).join(', ')}]`] : [`array accounts[${n}]`, ...OBJS.map((o, i) => `accounts[${i}] = ${o.name}`)];
+    let body;
+    if (prog === 'describe') body = py ? ['for acc in accounts:', '    print(acc.describe())'] : [`for i = 0 to ${n - 1}`, '  print(accounts[i].describe())', 'next i'];
+    else if (prog === 'withdraw') body = py ? ['for acc in accounts:', `    if acc.withdraw(${amt}):`, '        print("Withdrawn:", acc.describe())', '    else:', '        print("Refused:", acc.describe())'] : [`for i = 0 to ${n - 1}`, `  if accounts[i].withdraw(${amt}) then`, '    print("Withdrawn: " + accounts[i].describe())', '  else', '    print("Refused: " + accounts[i].describe())', '  endif', 'next i'];
+    else body = py ? ['for acc in accounts:', '    if isinstance(acc, SavingsAccount):', '        acc.add_interest()', '    print(acc.describe())'] : [`for i = 0 to ${n - 1}`, '  if accounts[i] is a SavingsAccount then', '    accounts[i].addInterest()', '  endif', '  print(accounts[i].describe())', 'next i'];
+    return { lines: [...decl, '', ...body], bodyStart: decl.length + 1 };
+  }
+  function polySteps() {
+    const prog = $('#polyProg').value, amt = Number($('#polyAmt').value) || 0; const { bodyStart } = polyCode();
+    const snap = OBJS.map(o => ({ ...o, s: { ...o.s } }));
+    const steps = []; const py = G.lang === 'py';
+    steps.push({ line: 0, objs: snap.map(o => ({ ...o, s: { ...o.s } })), title: 'An array of the parent type', text: `accounts holds ${snap.length} objects. Their classes differ (${[...new Set(snap.map(o => o.cls))].join(', ')}), but every one of them <em>is an</em> Account, so they can share one array declared for Account objects. The loop treats them all the same.` });
+    snap.forEach((o, i) => {
+      const T = []; let out, changed = [], line;
+      if (prog === 'describe') { const r = call(o, 'describe', [], T); out = r.ret; line = bodyStart + 1; }
+      else if (prog === 'withdraw') { const r = call(o, 'withdraw', [amt], T); changed = r.changed || []; const d = call(o, 'describe', [], []).ret; out = (r.ret ? 'Withdrawn: ' : 'Refused: ') + d; line = bodyStart + (r.ret ? 2 : (py ? 4 : 4)); }
+      else { if (o.cls === 'SavingsAccount') { const r = call(o, 'addInterest', [], T); changed = r.changed || []; } else T.push(`${o.name} is a ${o.cls}, not a SavingsAccount, so addInterest is not called (it does not even have that method).`); const r2 = call(o, 'describe', [], T); out = r2.ret; line = bodyStart + (py ? 3 : 4); }
+      steps.push({ line, objs: snap.map(x => ({ ...x, s: { ...x.s } })), changedName: o.name, changed, title: `${py ? 'acc' : 'accounts[' + i + ']'} is ${o.name}, a ${o.cls}`, text: `The same line of code runs, but the object decides which method body executes.`, work: `<div class="console"><div class="entry ok"><div class="call">${esc(py ? `acc.${prog === 'describe' ? 'describe()' : prog === 'withdraw' ? `withdraw(${money(amt)})` : 'add_interest() / describe()'}`  : `accounts[${i}].${prog === 'describe' ? 'describe()' : prog === 'withdraw' ? `withdraw(${money(amt)})` : 'addInterest() / describe()'}`)}</div>${T.map(t => `<div class="trace">${t}</div>`).join('')}<div class="out">output: ${esc(out)}</div></div></div>`, q: prog === 'describe' ? { q: `Which class's describe method runs for ${o.name}?`, a: findMethod(o.cls, 'describe').toLowerCase() } : (prog === 'withdraw' ? { q: `Will ${o.name} allow the withdrawal of ${money(amt)}? (yes/no)`, a: T.some(t => t.includes('returns true')) ? 'yes' : 'no' } : null) });
+    });
+    steps.push({ line: bodyStart, objs: snap.map(x => ({ ...x, s: { ...x.s } })), title: 'That is polymorphism', text: `One loop, one method name, ${snap.length} objects, and ${prog === 'describe' ? 'three different describe bodies ran' : prog === 'withdraw' ? 'two different canWithdraw rules decided the outcome' : 'only the savings accounts earned interest'}. The loop never checked what kind of account it had${prog === 'monthEnd' ? ' except to find the ones with an addInterest method' : ''}. Add a new subclass tomorrow and this loop still works without being edited.` });
+    return steps;
+  }
+  function polyLoad() { $('#polyCode').innerHTML = polyCode().lines.map(l => `<span class="ln">${esc(l) || ' '}</span>`).join(''); $('#polyAmt').hidden = $('#polyProg').value !== 'withdraw'; WTp.load(polySteps(), 'The loop runs on the objects from the first tab, as they are now.'); }
+  $('#polyProg').addEventListener('change', polyLoad); $('#polyAmt').addEventListener('input', polyLoad);
+
+  /* ---------- Exam questions ---------- */
+  const codeBlock = lines => `<pre class="code">${lines.map(l => `<span class="ln">${esc(l) || ' '}</span>`).join('')}</pre>`;
+  const EXAM = [
+    { marks: 2, q: `Explain the difference between a <b>class</b> and an <b>object</b>, using the Account example.`, mp: ['A class is a template/blueprint that defines the attributes and methods, e.g. Account defines holder, balance, deposit… (1)', 'An object is an instance of the class created with new, holding its own attribute values, e.g. acc1 with balance 100 (1)'] },
+    { marks: 2, q: `State what is meant by an <b>attribute</b> and a <b>method</b>.`, mp: ['An attribute is a variable belonging to an object that stores data about it, e.g. balance (1)', 'A method is a procedure or function defined in the class that an object can perform, e.g. deposit (1)'] },
+    { marks: 5, q: `A library stores books. Write pseudocode for a class <code>Book</code> with private attributes <code>title</code> and <code>available</code>, a constructor that takes the title and sets the book as available, and a function <code>borrow()</code> that marks the book unavailable and returns true if it was available, otherwise returns false.`,
+      code: ['class Book', '  private title', '  private available', '', '  public procedure new(givenTitle)', '    title = givenTitle', '    available = true', '  endprocedure', '', '  public function borrow()', '    if available then', '      available = false', '      return true', '    else', '      return false', '    endif', '  endfunction', 'endclass'],
+      mp: ['Class declared with both attributes private (1)', 'Constructor named new taking the title as a parameter (1)', 'Constructor sets title from the parameter and available to true (1)', 'borrow checks available and sets it to false when borrowing (1)', 'Returns true/false correctly in both cases (1)'] },
+    { marks: 3, q: `Write pseudocode to create a Book object for "Dune", borrow it, and output whether the borrowing succeeded.`, code: ['myBook = new Book("Dune")', 'success = myBook.borrow()', 'print(success)'], mp: ['Instantiation with new and the correct argument (1)', 'Method called on the object with dot notation (1)', 'Return value stored or output (1)'] },
+    { marks: 3, q: `Explain what is meant by <b>encapsulation</b> and give one benefit of using it in the Book class.`, mp: ['Attributes are declared private so they cannot be accessed directly from outside the class (1)', 'They can only be read or changed through the class\'s public methods (getters/setters) (1)', 'Benefit: available can only change through borrow (and return), so it cannot be set to an invalid value / the internal representation can change without affecting other code / fewer bugs (1)'] },
+    { marks: 3, q: `Write a getter and a setter for the attribute <code>title</code>. The setter must reject an empty string.`, code: ['public function getTitle()', '  return title', 'endfunction', '', 'public procedure setTitle(newTitle)', '  if newTitle != "" then', '    title = newTitle', '  endif', 'endprocedure'], mp: ['Public function returning title (1)', 'Public procedure with a parameter that assigns to title (1)', 'Validation rejecting "" before assigning (1)'] },
+    { marks: 5, q: `An e-book is a book that also has a file size in MB. Write pseudocode for a class <code>EBook</code> that inherits from <code>Book</code>, has a private attribute <code>fileSize</code>, a constructor that takes the title and file size, and a function <code>describe()</code> that returns the title followed by the file size. Assume Book has a public method <code>getTitle()</code>.`,
+      code: ['class EBook inherits Book', '  private fileSize', '', '  public procedure new(givenTitle, givenSize)', '    super.new(givenTitle)', '    fileSize = givenSize', '  endprocedure', '', '  public function describe()', '    return getTitle() + " (" + str(fileSize) + " MB)"', '  endfunction', 'endclass'], mp: ['class EBook inherits Book (1)', 'Private attribute fileSize (1)', 'Constructor calls super.new(givenTitle) (1)', 'Constructor sets fileSize from its parameter (1)', 'describe uses getTitle() rather than accessing the private title directly, and returns the combined string (1)'] },
+    { marks: 2, q: `Explain why the <code>EBook</code> class cannot use the <code>title</code> attribute directly, and what it must do instead.`, mp: ['title is private to Book, and private attributes are not accessible in subclasses (1)', 'EBook must use Book\'s public getter getTitle() (or a setter to change it) (1)'] },
+    { marks: 3, q: `The Book class also has a <code>describe()</code> method that returns just the title. Explain how this demonstrates <b>polymorphism</b>.`, mp: ['EBook overrides describe: a method with the same name is redefined in the subclass (1)', 'Calling describe() on a Book object runs Book\'s version, on an EBook object runs EBook\'s version: same call, different behaviour (1)', 'So code can hold Books and EBooks in the same array/variable type and call describe() on each without knowing which it is (1)'] },
+    { marks: 2, q: `State the purpose of a <b>constructor</b> and explain when it is executed.`, mp: ['Initialises the attributes of a new object so it starts in a valid state (1)', 'Runs automatically once, when the object is instantiated with new (1)'] },
+    { marks: 4, q: `A software company is building a large system with a team of developers. Discuss the advantages of using object-oriented programming for this project.`, mp: ['Encapsulation: data is protected inside classes, so one developer\'s code cannot corrupt another\'s (1)', 'Inheritance: common code is written once in a parent class and reused, reducing duplication and errors (1)', 'Classes are self-contained modules that can be developed and tested separately by different team members (1)', 'Polymorphism / abstraction: code written for a parent type works with future subclasses, so the system is easier to extend and maintain (1)', 'Classes model real-world things, making the design easier to understand and discuss (max 4)'] },
+    { marks: 3, q: `Draw (or describe in text) the class diagram for <code>EBook</code>. Use − for private and + for public.`, mp: ['Three sections: class name, attributes, methods (1)', 'Attributes: − fileSize; methods: + new(givenTitle, givenSize), + describe() (1)', 'An arrow with a hollow head from EBook to Book showing inheritance (1)'] },
+    { marks: 3, q: `Look at this code and identify (a) the line that instantiates an object, (b) a method call, (c) the name of a class.` + codeBlock(['acc = new SavingsAccount("Ben", 250, 2.5)', 'acc.addInterest()', 'print(acc.getBalance())']), mp: ['(a) line 1: acc = new SavingsAccount(…) (1)', '(b) acc.addInterest() or acc.getBalance() (1)', '(c) SavingsAccount (1)'] }
+  ];
+  function renderExam() { $('#examList').innerHTML = EXAM.map((x, i) => `<div class="qcard"><div class="qhead"><h3>Question ${i + 1}</h3><span class="marks">${x.marks} mark${x.marks === 1 ? '' : 's'}</span></div><div>${x.q}</div><button class="btn" type="button" data-reveal="${i}">Show answer</button><div class="answer" hidden>${x.code ? `<div class="mp">Example answer (OCR pseudocode)</div>${codeBlock(x.code)}` : ''}<div class="mp">Mark points</div><ul>${x.mp.map(m => `<li>${m}</li>`).join('')}</ul></div></div>`).join(''); }
+  $('#examList').addEventListener('click', ev => { const b = ev.target.closest('[data-reveal]'); if (!b) return; const a = b.nextElementSibling; a.hidden = !a.hidden; b.textContent = a.hidden ? 'Show answer' : 'Hide answer'; });
+
+  /* ---------- Quick quiz ---------- */
+  const Q = { cur: null, score: [0, 0] };
+  const rnd = n => Math.floor(Math.random() * n);
+  const TERMS = [['A template that defines the attributes and methods of a type of object.', 'class'], ['An instance of a class, with its own attribute values.', 'object', ['instance']], ['A variable inside an object that stores data about it.', 'attribute', ['property', 'field']], ['A procedure or function defined inside a class.', 'method'], ['The special method that runs when an object is created.', 'constructor'], ['Creating an object from a class using new.', 'instantiation', ['instantiate', 'instantiating']], ['Keeping attributes private and accessing them only through public methods.', 'encapsulation'], ['A subclass taking on the attributes and methods of its parent class.', 'inheritance'], ['The same method name behaving differently depending on the class of the object.', 'polymorphism'], ['A subclass redefining a method it inherited from its parent.', 'overriding', ['override', 'method overriding']], ['A method that returns the value of a private attribute.', 'getter', ['get method', 'accessor']], ['A method that changes a private attribute, usually with validation.', 'setter', ['set method', 'mutator']], ['The keyword used inside a subclass to call the parent class\'s version of a method.', 'super']];
+  const QT = {
+    term() { const [d, a, alt] = TERMS[rnd(TERMS.length)]; return { prompt: `Which term is being described?<br><b>${d}</b>`, fields: [{ id: 'a', label: 'Term', a, alt: alt || [] }], reveal: a }; },
+    vis() { const pool = [['Account', 'balance', 'private', 'attribute'], ['Account', 'holder', 'private', 'attribute'], ['Account', 'deposit', 'public', 'method'], ['Account', 'getBalance', 'public', 'method'], ['SavingsAccount', 'interestRate', 'private', 'attribute'], ['SavingsAccount', 'addInterest', 'public', 'method'], ['CurrentAccount', 'overdraftLimit', 'private', 'attribute'], ['Player', 'name', 'public', 'attribute'], ['Player', 'score', 'private', 'attribute'], ['Player', 'setScore', 'public', 'method']]; const [c, n, v, k] = pool[rnd(pool.length)]; return { prompt: `In the <code>${c}</code> class on this page, is the ${k} <code>${n}</code> <b>public</b> or <b>private</b>?`, fields: [{ id: 'a', label: 'public or private', a: v }], reveal: `${n} is ${v}: ${k === 'attribute' ? 'attributes are kept private (except Player.name, which is public to show the contrast)' : 'methods that form the interface are public'}.` }; },
+    which() { const o = OBJS[rnd(OBJS.length)]; const ms = ['describe', 'deposit', 'withdraw', 'canWithdraw', 'getBalance']; const m = ms[rnd(ms.length)]; const c = findMethod(o.cls, m); return { prompt: `<code>${o.name}</code> is a <code>${o.cls}</code>. When <code>${o.name}.${m}()</code> is called, which class's <code>${m}</code> method runs?`, fields: [{ id: 'a', label: 'Class name', a: c.toLowerCase(), alt: [] }], reveal: `${c}: ${c === o.cls ? `${o.cls} defines its own ${m}${c !== 'Account' ? ', overriding Account\'s' : ''}` : `${o.cls} does not define ${m}, so the inherited version from ${c} runs`}.` }; },
+    trace() {
+      const kinds = ['Account', 'SavingsAccount', 'CurrentAccount']; const cls = kinds[rnd(3)]; const bal = 50 + rnd(10) * 10; const extra = cls === 'SavingsAccount' ? [2, 4, 5, 10][rnd(4)] : 100;
+      const o = construct(cls, 'a', ['Sam', bal, extra]); const lines = [newLine(cls, 'a', 'Sam', bal, extra)];
+      const ops = []; const n = 2 + rnd(2);
+      for (let i = 0; i < n; i++) { const k = rnd(cls === 'SavingsAccount' ? 3 : 2); if (k === 0) { const a = 10 + rnd(8) * 10; call(o, 'deposit', [a], []); ops.push(callLine('a', 'deposit', [a])); } else if (k === 1) { const a = 20 + rnd(10) * 20; call(o, 'withdraw', [a], []); ops.push(callLine('a', 'withdraw', [a])); } else { call(o, 'addInterest', [], []); ops.push(callLine('a', 'addInterest', [])); } }
+      lines.push(...ops, G.lang === 'py' ? 'print(a.get_balance())' : 'print(a.getBalance())');
+      return { prompt: `What is output? Remember Account refuses a withdrawal that exceeds the balance, a CurrentAccount allows an overdraft up to its limit, and interest is balance × rate / 100.` + codeBlock(lines), fields: [{ id: 'a', label: 'Output', a: o.s.balance, kind: 'num' }], reveal: `Final balance ${money(o.s.balance)}.` };
+    }
+  };
+  function newQuestion() { let t = $('#qType').value; if (t === 'mix') t = ['term', 'vis', 'which', 'trace'][rnd(4)]; Q.cur = QT[t](); Q.cur.done = false; $('#qPrompt').innerHTML = Q.cur.prompt; $('#qFields').innerHTML = Q.cur.fields.map(f => `<label>${f.label}<input type="text" id="q_${f.id}" autocomplete="off" spellcheck="false"></label>`).join(''); $('#qForm').hidden = false; $('#qFb').textContent = ''; $('#qFb').className = 'fb'; const first = $('#qFields input'); if (first) first.focus({ preventScroll: true }); }
+  $('#newQ').addEventListener('click', newQuestion);
+  $('#qForm').addEventListener('submit', ev => { ev.preventDefault(); if (!Q.cur) return; const wrong = Q.cur.fields.filter(f => !checkAnswer($('#q_' + f.id).value, f)); if (!Q.cur.done) { Q.score[1]++; if (!wrong.length) Q.score[0]++; Q.cur.done = true; $('#pScore').textContent = `Score: ${Q.score[0]} / ${Q.score[1]}`; } if (!wrong.length) { $('#qFb').textContent = 'Correct.'; $('#qFb').className = 'fb ok'; } else { $('#qFb').innerHTML = `Not quite. ${esc(Q.cur.reveal)}`; $('#qFb').className = 'fb bad'; } });
+  $('#qReveal').addEventListener('click', () => { if (!Q.cur) return; if (!Q.cur.done) { Q.score[1]++; Q.cur.done = true; $('#pScore').textContent = `Score: ${Q.score[0]} / ${Q.score[1]}`; } $('#qFb').textContent = Q.cur.reveal; $('#qFb').className = 'fb'; });
+
+  /* ---------- Tabs and language ---------- */
+  const TABS = ['objects', 'ctor', 'encap', 'inherit', 'poly', 'exam', 'quiz'];
+  let curTab = 'objects';
+  function showTab(id) { curTab = id; TABS.forEach(t => { $('#tab-' + t).hidden = t !== id; }); document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === id ? 'true' : 'false')); if (id === 'poly') polyLoad(); if (id === 'inherit') { fillLookupObjs(); renderLookup(); } }
+  $('#tabs').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) showTab(b.dataset.tab); });
+  function renderAllLang() { renderCode1(); renderObjects(); ctorLoad(); renderEncap(); renderLookup(); polyLoad(); updateNewHint(); }
+  $('#langSeg').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; G.lang = b.dataset.lang; document.querySelectorAll('#langSeg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); renderAllLang(); });
+  document.addEventListener('keydown', ev => { if (ev.key !== 'ArrowRight' || ev.altKey || ev.metaKey || ev.ctrlKey) return; const tag = (ev.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') return; if (curTab === 'ctor') { ev.preventDefault(); WTc.next(); } if (curTab === 'poly') { ev.preventDefault(); WTp.next(); } });
+
+  try { const h = location.hash.slice(1); if (TABS.includes(h)) curTab = h; } catch (_) {}
+  renderDiagram(); fillLookupObjs(); renderAllLang(); renderExam(); renderScore(); showTab(curTab);
+})();
+</script>
+
+</body></html>

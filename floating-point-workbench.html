@@ -1,0 +1,1190 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Floating Point Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: a worksheet. Inputs and the exam method on the left, the live bit strip and step-by-step working on the right, on the same squared paper as the Little Man page. */
+:root {
+  --paper: #eef2f7;
+  --grid: #dde4ee;
+  --surface: #ffffff;
+  --unit: #f3f6fa;
+  --ink: #14213a;
+  --ink-soft: #56637a;
+  --line: #a6b2c4;
+  --mant: #0b8587;
+  --exp: #b26f06;
+  --sign: #c2365b;
+  --pt: #6a4bd0;
+  --res: #2459c4;
+  --on-accent: #ffffff;
+  --ok: #1b7f47;
+  --bad: #c0392b;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+    --mant: #33c3c1; --exp: #f0a832; --sign: #ff6f91; --pt: #a68dff; --res: #6f9bff; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+  --mant: #33c3c1; --exp: #f0a832; --sign: #ff6f91; --pt: #a68dff; --res: #6f9bff; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(1.7rem, 3.2vw, 2.5rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; font-weight: 700; }
+h3 { font-size: 1rem; font-weight: 700; }
+p { margin: 0; }
+.mono, code { font-family: var(--font-mono); }
+code { background: var(--unit); border-radius: 4px; padding: 0 4px; font-size: .92em; }
+sup { font-size: .72em; }
+.aside { display: block; margin-top: 6px; color: var(--ink-soft); font-size: .9rem; }
+.m { color: var(--mant); font-weight: 700; }
+.e { color: var(--exp); font-weight: 700; }
+.s { color: var(--sign); font-weight: 700; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.top p { margin-top: 4px; color: var(--ink-soft); max-width: 64ch; }
+.global { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.global label { font-size: .9rem; display: inline-flex; align-items: center; gap: 6px; }
+select, input[type="text"] {
+  font: 15px/1.4 var(--font-mono); color: var(--ink); background: var(--unit);
+  border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px; max-width: 100%;
+}
+select { font-family: var(--font-body); font-size: .9rem; }
+input[type="text"] { width: 100%; }
+select:focus, input:focus, button:focus-visible, .cell:focus-visible { outline: 3px solid color-mix(in srgb, var(--res) 55%, transparent); outline-offset: 2px; }
+.toggle { cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--res); }
+.score { font-size: .9rem; color: var(--ink-soft); }
+
+/* Convention card */
+.conv { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px 24px; align-items: center; }
+@media (max-width: 860px) { .conv { grid-template-columns: minmax(0, 1fr); } }
+.conv ul { margin: 6px 0 0; padding-left: 18px; font-size: .95rem; display: grid; gap: 4px; }
+.formula { font-family: var(--font-display); font-size: clamp(1.2rem, 2.4vw, 1.6rem); font-weight: 700; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.formula .e { font-size: .8em; vertical-align: super; }
+
+/* Tabs */
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.tabs button {
+  flex: none; font: 700 .92rem var(--font-body); color: var(--ink-soft); background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; white-space: nowrap;
+}
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tabs button:hover:not([aria-selected="true"]) { background: var(--unit); color: var(--ink); }
+
+/* Tab panels */
+.tab { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tab.wide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1000px) { .tab { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.field-row { display: grid; gap: 4px; }
+.field-row label { font-size: .85rem; color: var(--ink-soft); }
+.hint { font-size: .85rem; color: var(--ink-soft); }
+.msg { font-size: .9rem; min-height: 1.2em; }
+.msg.err { color: var(--bad); }
+.btn {
+  font: 700 .92rem var(--font-body); color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--ink); border-radius: 8px; padding: 8px 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--unit); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 85%, var(--paper)); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn kbd { font: 600 .72rem var(--font-mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .7; }
+.method { background: var(--unit); border-radius: 10px; padding: 12px 14px; }
+.method h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-family: var(--font-body); margin-bottom: 6px; }
+.method ol { margin: 0; padding-left: 20px; display: grid; gap: 5px; font-size: .93rem; }
+.method ol li::marker { font-family: var(--font-display); font-weight: 800; color: var(--res); }
+
+/* Bit strip */
+.strip { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; padding: 14px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; overflow-x: auto; }
+.field { display: grid; gap: 6px; justify-items: start; padding: 8px; border-radius: 10px; border: 1.5px solid transparent; transition: border-color .2s, background-color .2s; }
+.field.hl { border-color: var(--fc); background: color-mix(in srgb, var(--fc) 10%, var(--surface)); }
+.field.mant { --fc: var(--mant); } .field.exp { --fc: var(--exp); }
+.flabel { font: 700 .8rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--fc); }
+.flabel span { color: var(--ink-soft); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.cells { display: flex; align-items: center; gap: 3px; }
+.cell {
+  width: 30px; height: 40px; border-radius: 6px; display: grid; place-items: center; cursor: default;
+  font: 700 1.25rem var(--font-mono); color: var(--ink); background: var(--surface); border: 1.5px solid var(--fc); padding: 0;
+}
+button.cell { cursor: pointer; }
+button.cell:hover { background: color-mix(in srgb, var(--fc) 14%, var(--surface)); }
+.cell.sign { border-color: var(--sign); color: var(--sign); }
+.cell.sign.hl, .field.hl .cell.sign { background: color-mix(in srgb, var(--sign) 16%, var(--surface)); }
+.cells .point { font: 800 1.6rem var(--font-mono); color: var(--pt); line-height: 1; width: 12px; text-align: center; }
+.pvs { display: flex; gap: 3px; }
+.pvs span { width: 30px; font: .62rem var(--font-mono); color: var(--ink-soft); text-align: center; }
+.pvs .ptgap { width: 12px; }
+.times { font: 700 1.25rem var(--font-display); color: var(--ink-soft); padding-bottom: 36px; }
+.times sup { font-size: .7em; }
+@media (max-width: 480px) { .cell { width: 26px; height: 36px; font-size: 1.1rem; } .pvs span { width: 26px; font-size: .56rem; } }
+
+/* Readout */
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin: 0; }
+.readout div { background: var(--unit); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.readout dt { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+.readout dd { margin: 2px 0 0; font: 700 1rem var(--font-mono); overflow-wrap: anywhere; }
+.readout dd small { font: .8rem var(--font-body); color: var(--ink-soft); }
+.badge { display: inline-block; font: 700 .75rem var(--font-body); padding: 2px 9px; border-radius: 999px; color: var(--on-accent); background: var(--ok); }
+.badge.no { background: var(--bad); }
+
+/* Walkthrough */
+.wt { display: grid; gap: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.narration { display: grid; gap: 8px; }
+.narr-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stage-tag { font: 800 .76rem var(--font-body); letter-spacing: .1em; text-transform: uppercase; background: var(--res); color: var(--on-accent); padding: 3px 10px; border-radius: 999px; }
+.stage-tag.done { background: var(--ok); }
+.stage-tag.ready { background: var(--ink-soft); }
+.step-count { font-size: .85rem; color: var(--ink-soft); }
+.step-title { font-size: 1.3rem; }
+.step-text { max-width: 70ch; }
+.step-text b { color: var(--ink); }
+.ask { display: grid; gap: 8px; background: color-mix(in srgb, var(--res) 8%, var(--surface)); border: 1.5px solid var(--res); border-radius: 10px; padding: 12px; }
+.ask form { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask input { flex: 1 1 140px; width: auto; }
+.ask p { font-weight: 700; }
+.fb { font-size: .9rem; min-height: 1.3em; }
+.fb.ok { color: var(--ok); } .fb.bad { color: var(--bad); }
+
+/* Worksheet */
+.work { display: grid; gap: 7px; background: var(--unit); border-radius: 10px; padding: 12px; overflow-x: auto; font-family: var(--font-mono); font-size: .95rem; }
+.work:empty { display: none; }
+.wrow { display: grid; grid-template-columns: 110px auto minmax(0, 1fr); gap: 4px 12px; align-items: center; min-width: max-content; }
+.wl { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .07em; color: var(--ink-soft); }
+.wn { font: .9rem var(--font-body); color: var(--ink-soft); white-space: nowrap; }
+.wn b { color: var(--ink); }
+.wn .big { font: 800 1.3rem var(--font-display); color: var(--res); }
+.bits { display: inline-flex; align-items: center; }
+.b { display: inline-grid; place-items: center; width: 1.35em; height: 1.7em; border-radius: 4px; font-weight: 700; margin: 0 1px; background: var(--surface); border: 1px solid var(--line); }
+.bits.mant .b { border-color: var(--mant); color: var(--mant); }
+.bits.exp .b { border-color: var(--exp); color: var(--exp); }
+.bits.res .b { border-color: var(--res); color: var(--res); }
+.b.sign { border-color: var(--sign) !important; color: var(--sign) !important; }
+.b.dim, .b.lost { opacity: .45; border-style: dashed; }
+.b.lost { text-decoration: line-through; }
+.b.hl { background: color-mix(in srgb, var(--res) 22%, var(--surface)); }
+.b.carry { border: none; background: none; color: var(--sign); font-size: .8em; height: 1.2em; }
+.b.sym { border: none; background: none; color: var(--ink-soft); }
+.b.strike { text-decoration: line-through; opacity: .6; }
+.pt { display: inline-block; width: .6em; text-align: center; color: var(--pt); font-weight: 800; }
+.arrow { color: var(--ink-soft); margin: 0 6px; }
+.colblock { display: grid; gap: 2px; }
+.crow { display: flex; align-items: center; }
+.crow.rule { border-top: 2px solid var(--ink); margin: 2px 0 2px 1.6em; }
+table.dbl { border-collapse: collapse; font-size: .9rem; }
+table.dbl th, table.dbl td { padding: 3px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.dbl th { font: 700 .7rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+table.dbl td.bit { color: var(--mant); font-weight: 700; }
+.pvt { display: inline-flex; gap: 2px; align-items: end; }
+.pvt span { display: grid; justify-items: center; width: 2.6em; }
+.pvt span b { font-size: 1rem; color: var(--mant); }
+.pvt span small { font: .62rem var(--font-body); color: var(--ink-soft); }
+.pvt .pv-pt { width: .8em; color: var(--pt); font-weight: 800; align-self: end; padding-bottom: .9em; }
+
+/* Range tab */
+.extremes { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.extremes th, .extremes td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.extremes th { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+.extremes td.v { font: 700 .95rem var(--font-mono); overflow-wrap: anywhere; }
+.tablewrap { overflow-x: auto; }
+.splits td, .splits th { white-space: nowrap; }
+.splits tr.cur td { background: color-mix(in srgb, var(--res) 12%, var(--surface)); font-weight: 700; }
+
+/* Practice */
+.q-prompt { font-size: 1.05rem; max-width: 70ch; }
+.q-fields { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.q-fields label { display: grid; gap: 4px; font-size: .85rem; color: var(--ink-soft); }
+
+details.tips { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+details.tips summary { cursor: pointer; font: 700 1.05rem var(--font-display); }
+details.tips ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: .95rem; }
+.glossary dt { font-weight: 700; margin-top: 6px; } .glossary dd { margin: 0; font-size: .93rem; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) { .field { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Floating point, the OCR way</h1>
+      <p>Mantissa and exponent, both in two's complement. Toggle the bits, type a number, then step through each conversion the way you would write it in the exam. A Level Computer Science, OCR H446, section 1.4.1 (e) and (f).</p>
+    </div>
+    <div class="global">
+      <label>Mantissa <select id="mBits" aria-label="Mantissa bits"></select> bits</label>
+      <label>Exponent <select id="eBits" aria-label="Exponent bits"></select> bits</label>
+      <label class="toggle"><input type="checkbox" id="quizOn"> Quiz me</label>
+      <span class="score" id="scoreBox" hidden>Quiz: <span id="score">0 / 0</span></span>
+    </div>
+  </header>
+
+  <section class="conv" aria-label="The OCR convention">
+    <div>
+      <div class="formula"><span>value =</span> <span class="m">mantissa</span> <span>× 2</span><span class="e">exponent</span></div>
+      <p class="hint" style="margin-top:6px">Example with 8 and 4 bits: <span class="m mono">0.1011000</span> × 2<sup class="e">0011</sup> = 0.6875 × 8 = 5.5</p>
+    </div>
+    <ul>
+      <li>The <b class="m">mantissa</b> holds the significant bits. Its binary point sits immediately after its first bit, and that first bit is the <b class="s">sign</b>.</li>
+      <li>The <b class="e">exponent</b> is an ordinary two's complement integer: how many places to move the point (right if positive, left if negative).</li>
+      <li><b>Normalised</b> means the mantissa starts <code>0.1</code> (positive) or <code>1.0</code> (negative). The first two bits differ.</li>
+      <li>The question tells you the bit widths. Always answer with that many bits.</li>
+    </ul>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
+    <button role="tab" data-tab="f2d" aria-selected="true">Binary → denary</button>
+    <button role="tab" data-tab="d2f" aria-selected="false">Denary → binary</button>
+    <button role="tab" data-tab="norm" aria-selected="false">Normalise</button>
+    <button role="tab" data-tab="add" aria-selected="false">Add and subtract</button>
+    <button role="tab" data-tab="range" aria-selected="false">Range and precision</button>
+    <button role="tab" data-tab="practice" aria-selected="false">Practice</button>
+  </nav>
+
+  <!-- Binary → denary -->
+  <section class="tab" id="tab-f2d" role="tabpanel">
+    <div class="panel">
+      <div class="panel-head"><h2>Floating point number</h2><select id="f2dPreset" aria-label="Examples"></select></div>
+      <div class="strip" id="f2dStrip"></div>
+      <div class="field-row"><label for="f2dM">Mantissa bits</label><input type="text" id="f2dM" inputmode="numeric" autocomplete="off" spellcheck="false"></div>
+      <div class="field-row"><label for="f2dE">Exponent bits</label><input type="text" id="f2dE" inputmode="numeric" autocomplete="off" spellcheck="false"></div>
+      <p class="msg err" id="f2dMsg" role="status"></p>
+      <dl class="readout" id="f2dRead"></dl>
+      <div class="method">
+        <h3>Exam method</h3>
+        <ol>
+          <li>Write the mantissa with its point after the first bit; write the exponent separately.</li>
+          <li>First bit of the mantissa is the sign. If it is 1, find the two's complement to get the size of the number.</li>
+          <li>Convert the exponent (two's complement) to denary.</li>
+          <li>Move the point that many places: right for a positive exponent, left for a negative one.</li>
+          <li>Add up the place values of the 1s (… 4, 2, 1, ½, ¼, ⅛ …).</li>
+          <li>Put the sign back.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel"><h2>Worked conversion</h2><div class="wt" id="wt-f2d"></div></div>
+  </section>
+
+  <!-- Denary → binary -->
+  <section class="tab" id="tab-d2f" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Denary number</h2><select id="d2fPreset" aria-label="Examples"></select></div>
+      <div class="field-row"><label for="d2fX">Number to convert</label><input type="text" id="d2fX" inputmode="decimal" autocomplete="off" spellcheck="false" value="5.5"></div>
+      <p class="msg err" id="d2fMsg" role="status"></p>
+      <div class="strip" id="d2fStrip"></div>
+      <div class="method">
+        <h3>Exam method</h3>
+        <ol>
+          <li>Note the sign. Work with the positive value.</li>
+          <li>Integer part to binary (place values, or repeated division by 2).</li>
+          <li>Fraction part to binary by repeated doubling: the digit before the point each time is the next bit.</li>
+          <li>Normalise: move the point to just before the first 1. Each place moved left is +1 on the exponent; each place moved right is −1.</li>
+          <li>Mantissa: a 0, then the bits after the point, padded with zeros (or truncated) to the right width.</li>
+          <li>Exponent: two's complement in the given width.</li>
+          <li>Negative number: two's complement the whole mantissa. If it now starts <code>1.1</code>, shift it left once and subtract 1 from the exponent.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel"><h2>Worked conversion</h2><div class="wt" id="wt-d2f"></div></div>
+  </section>
+
+  <!-- Normalise -->
+  <section class="tab" id="tab-norm" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Unnormalised number</h2><select id="normPreset" aria-label="Examples"></select></div>
+      <div class="field-row"><label for="normM">Mantissa bits</label><input type="text" id="normM" inputmode="numeric" autocomplete="off" spellcheck="false"></div>
+      <div class="field-row"><label for="normE">Exponent bits</label><input type="text" id="normE" inputmode="numeric" autocomplete="off" spellcheck="false"></div>
+      <p class="msg err" id="normMsg" role="status"></p>
+      <div class="strip" id="normStrip"></div>
+      <div class="method">
+        <h3>Exam method</h3>
+        <ol>
+          <li>A normalised mantissa starts <code>0.1</code> or <code>1.0</code>: the first two bits differ.</li>
+          <li>If the first two bits are the same, shift the mantissa one place left (a 0 comes in on the right) and subtract 1 from the exponent.</li>
+          <li>Repeat until the first two bits differ.</li>
+          <li>Check: convert before and after to denary; the value must not change.</li>
+        </ol>
+      </div>
+      <div class="method">
+        <h3>Why normalise?</h3>
+        <ol>
+          <li><b>One representation per number.</b> 0.011 × 2<sup>3</sup> and 0.11 × 2<sup>2</sup> are both 3; normalised form makes the second one the only correct answer, so numbers can be compared bit by bit.</li>
+          <li><b>Maximum precision.</b> Leading bits that merely repeat the sign are wasted. Shifting them out frees those bit positions for real significant bits.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel"><h2>Worked normalisation</h2><div class="wt" id="wt-norm"></div></div>
+  </section>
+
+  <!-- Add and subtract -->
+  <section class="tab" id="tab-add" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Two numbers</h2><select id="addPreset" aria-label="Examples"></select></div>
+      <div class="field-row"><label for="addA">A (denary)</label><input type="text" id="addA" inputmode="decimal" autocomplete="off" spellcheck="false" value="5"></div>
+      <div class="strip" id="addStripA"></div>
+      <div class="field-row"><label for="addOp">Operation</label><select id="addOp"><option value="+">A + B (add)</option><option value="-">A − B (subtract)</option></select></div>
+      <div class="field-row"><label for="addB">B (denary)</label><input type="text" id="addB" inputmode="decimal" autocomplete="off" spellcheck="false" value="3"></div>
+      <div class="strip" id="addStripB"></div>
+      <p class="msg err" id="addMsg" role="status"></p>
+      <div class="method">
+        <h3>Exam method</h3>
+        <ol>
+          <li>Make the exponents equal: shift the mantissa with the <b>smaller</b> exponent to the right by the difference, bringing copies of its sign bit in on the left, and raise its exponent to match.</li>
+          <li>To subtract, two's complement the mantissa being subtracted, then add.</li>
+          <li>Add the mantissas as two's complement numbers. Leave a spare bit on the left for the carry, because the result can be up to twice the size.</li>
+          <li>Normalise the result: shift right (exponent +1) if it has grown past the point, or shift left (exponent −1 each time) until it starts <code>0.1</code> or <code>1.0</code>.</li>
+          <li>Truncate the mantissa to the required width and check the exponent still fits.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel"><h2>Worked calculation</h2><div class="wt" id="wt-add"></div></div>
+  </section>
+
+  <!-- Range and precision -->
+  <section class="tab wide" id="tab-range" role="tabpanel" hidden>
+    <div class="panel">
+      <h2 id="rangeHead">Range and precision</h2>
+      <p class="hint" style="max-width:70ch">The exponent bits decide the <b>range</b> (how big and how small a number can be). The mantissa bits decide the <b>precision</b> (how close together the representable numbers are). With a fixed number of bits in total, every bit given to one is taken from the other.</p>
+      <div class="tablewrap"><table class="extremes" id="extremes"></table></div>
+      <h3>Trading bits: every split of the same total</h3>
+      <div class="tablewrap"><table class="extremes splits" id="splits"></table></div>
+      <div class="method">
+        <h3>What to say in the exam</h3>
+        <ol>
+          <li>More <b>exponent</b> bits: a larger range of values (bigger largest number, smaller smallest number), but fewer mantissa bits so less precision.</li>
+          <li>More <b>mantissa</b> bits: more precision (more significant figures, smaller rounding errors), but a smaller range.</li>
+          <li>Floating point versus fixed point with the same number of bits: floating point gives a far larger range, but its precision is not uniform. Large numbers are spaced further apart than small ones, and arithmetic is slower because of the normalising and aligning steps.</li>
+          <li>Many denary fractions (0.1, for example) have no finite binary form, so they are stored truncated. Repeated calculations accumulate these rounding errors.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- Practice -->
+  <section class="tab" id="tab-practice" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Practice</h2>
+        <select id="qType" aria-label="Question type">
+          <option value="mix">Mixed questions</option>
+          <option value="f2d">Binary → denary</option>
+          <option value="d2f">Denary → binary</option>
+          <option value="norm">Normalise</option>
+          <option value="add">Add and subtract</option>
+          <option value="range">Range</option>
+        </select>
+      </div>
+      <p class="hint">Questions use the bit widths chosen at the top of the page. Bits can be typed with or without spaces and the point.</p>
+      <div class="controls"><button class="btn primary" id="newQ" type="button">New question</button><span class="score" id="pScore">Score: 0 / 0</span></div>
+    </div>
+    <div class="panel">
+      <p class="q-prompt" id="qPrompt">Press <b>New question</b> to start.</p>
+      <form id="qForm" autocomplete="off" hidden>
+        <div class="q-fields" id="qFields"></div>
+        <div class="controls" style="margin-top:10px">
+          <button class="btn primary" type="submit" id="qCheck">Check</button>
+          <button class="btn" type="button" id="qShow">Show working</button>
+        </div>
+      </form>
+      <div class="fb" id="qFb" role="status"></div>
+    </div>
+  </section>
+
+  <details class="tips">
+    <summary>Exam tips and common mistakes</summary>
+    <ul>
+      <li><b>Both parts are two's complement.</b> The exponent is not sign and magnitude and there is no bias. If an exponent starts with 1, it is negative.</li>
+      <li><b>The point is after the sign bit, not before it.</b> 1.011 as a negative mantissa is −1 + ¼ + ⅛ = −0.625, not −0.375.</li>
+      <li><b>Pad to the full width.</b> A 4-bit exponent of 3 is 0011, not 11. An 8-bit mantissa for 0.1 is 01000000.</li>
+      <li><b>Negative numbers: convert the positive value first</b>, take the two's complement of the whole mantissa, then re-check normalisation. −0.5, −1, −2 and −4 all end up with mantissa 1.000… and need the exponent reduced by one.</li>
+      <li><b>Moving the point.</b> A positive exponent moves it right (number gets bigger). Students often go the wrong way; check that a positive exponent with a 0.1… mantissa gives a number of at least ½.</li>
+      <li><b>Zero</b> cannot be normalised. By convention, mantissa 0 and exponent 0.</li>
+      <li><b>Show the working.</b> Marks are given for the two's complement, the doubling table, the shift count and the exponent, not just the final bits. Either method for negative mantissas (two's complement first, or a place value of −1 for the sign bit) is accepted.</li>
+      <li><b>Not on the spec:</b> real processors use the IEEE 754 standard, with a biased exponent and a hidden leading 1. OCR questions never use it, so do not mix the two conventions.</li>
+    </ul>
+    <dl class="glossary">
+      <dt>Mantissa</dt><dd>The part of a floating point number that holds the significant digits. In OCR's form it is a two's complement fraction with the point after the sign bit.</dd>
+      <dt>Exponent</dt><dd>The power of two the mantissa is multiplied by; in effect, how far the point moves.</dd>
+      <dt>Normalised</dt><dd>A mantissa that starts 0.1 or 1.0, giving each value a single representation and the maximum number of significant bits.</dd>
+      <dt>Truncation</dt><dd>Dropping the bits that do not fit in the mantissa. The stored value is then slightly closer to zero than the true one.</dd>
+    </dl>
+  </details>
+</div>
+
+<script>
+/* ============================================================
+   Engine: exact floating point arithmetic in OCR's convention.
+   Mantissa M and exponent E are bit strings, both two's complement.
+   value = twos(M) / 2^(m-1) × 2^twos(E) = twos(M) × 2^(twos(E) - (m-1))
+   Exact values are kept as {n: BigInt, p: int} meaning n × 2^p.
+   ============================================================ */
+const FP = {};
+FP.uint = b => parseInt(b, 2);
+FP.twos = b => { const n = parseInt(b, 2); return b[0] === '1' ? n - 2 ** b.length : n; };
+FP.toBits = (n, w) => { const mod = 2 ** w; const v = ((n % mod) + mod) % mod; return v.toString(2).padStart(w, '0'); };
+FP.invert = b => b.replace(/[01]/g, c => (c === '1' ? '0' : '1'));
+FP.addOne = b => FP.toBits(parseInt(b, 2) + 1, b.length);
+FP.negate = b => FP.addOne(FP.invert(b));
+FP.min = w => -(2 ** (w - 1));
+FP.max = w => 2 ** (w - 1) - 1;
+FP.inRange = (n, w) => n >= FP.min(w) && n <= FP.max(w);
+FP.isNorm = M => M[0] !== M[1];
+FP.isZero = M => !M.includes('1');
+FP.value = (M, E) => ({ n: BigInt(FP.twos(M)), p: FP.twos(E) - (M.length - 1) });
+FP.dec = (n, p) => {
+  if (p >= 0) return (n * (1n << BigInt(p))).toString();
+  const k = -p;
+  let v = n * 5n ** BigInt(k);
+  const neg = v < 0n; if (neg) v = -v;
+  const s = v.toString().padStart(k + 1, '0');
+  const ip = s.slice(0, s.length - k), fp = s.slice(s.length - k).replace(/0+$/, '');
+  return (neg ? '-' : '') + ip + (fp ? '.' + fp : '');
+};
+FP.valDec = (M, E) => { const v = FP.value(M, E); return FP.dec(v.n, v.p); };
+FP.addVals = (a, b) => { const p = Math.min(a.p, b.p); return { n: a.n * (1n << BigInt(a.p - p)) + b.n * (1n << BigInt(b.p - p)), p }; };
+FP.negVal = a => ({ n: -a.n, p: a.p });
+FP.eqVals = (a, b) => { const p = Math.min(a.p, b.p); return a.n * (1n << BigInt(a.p - p)) === b.n * (1n << BigInt(b.p - p)); };
+FP.parseDec = s => {
+  s = String(s).trim().replace(/[−–]/g, '-').replace(/\s+/g, '');
+  const mt = /^([+-])?(\d*)(?:\.(\d*))?$/.exec(s);
+  if (!mt || (!mt[2] && !mt[3])) return null;
+  const intStr = (mt[2] || '').replace(/^0+(?=\d)/, '') || '0';
+  const fracStr = (mt[3] || '').replace(/0+$/, '');
+  const neg = mt[1] === '-' && !(intStr === '0' && fracStr === '');
+  const abs = intStr + (fracStr ? '.' + fracStr : '');
+  return { neg, intStr, fracStr, abs, str: (neg ? '-' : '') + abs };
+};
+FP.sameDec = (a, b) => { const x = FP.parseDec(a), y = FP.parseDec(b); return !!x && !!y && x.str === y.str; };
+FP.parseNum = s => {
+  s = String(s).trim().replace(/[−–]/g, '-').replace(/\s+/g, '');
+  const fr = /^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/.exec(s);
+  if (fr) { const d = Number(fr[2]); return d ? Number(fr[1]) / d : null; }
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(s)) return null;
+  return Number(s);
+};
+FP.canonFixed = s => {
+  s = String(s).replace(/\s/g, '');
+  if (!/^[01]*\.?[01]*$/.test(s) || !/[01]/.test(s)) return null;
+  const [i, f = ''] = s.split('.');
+  return (i.replace(/^0+/, '') || '0') + '.' + f.replace(/0+$/, '');
+};
+FP.validBits = (s, w) => /^[01]+$/.test(s) && s.length === w;
+
+/* ---------- HTML helpers for the worksheet (pure string functions) ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const dot = M => M[0] + '.' + M.slice(1);
+const dot2 = X => X.slice(0, 2) + '.' + X.slice(2);
+function bitsHTML(str, o = {}) {
+  let di = 0, out = '<span class="bits ' + (o.col || '') + '">';
+  for (const ch of str) {
+    if (ch === '.') out += '<span class="pt">.</span>';
+    else if (ch === ' ') out += '<span class="b sym">&nbsp;</span>';
+    else if (ch === '0' || ch === '1') {
+      let cls = 'b';
+      if (o.sign && di === 0) cls += ' sign';
+      if (o.dim && o.dim.has(di)) cls += ' dim';
+      if (o.hl && o.hl.has(di)) cls += ' hl';
+      out += `<span class="${cls}">${ch}</span>`; di++;
+    } else out += `<span class="b sym">${esc(ch)}</span>`;
+  }
+  if (o.lost) for (const ch of o.lost) out += `<span class="b lost">${ch}</span>`;
+  return out + '</span>';
+}
+const row = (label, bits, note = '') => `<div class="wrow"><span class="wl">${label}</span><span class="wb">${bits}</span><span class="wn">${note}</span></div>`;
+const arrow = '<span class="arrow">→</span>';
+const pow = k => `2<sup>${k}</sup>`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const fracLabel = i => (i === 0 ? '−1' : '1/' + 2 ** i);
+function expPV(e) { return Array.from({ length: e }, (_, i) => (i === 0 ? -(2 ** (e - 1)) : 2 ** (e - 1 - i))); }
+function expSum(E) { const pv = expPV(E.length); const t = []; for (let i = 0; i < E.length; i++) if (E[i] === '1') t.push(String(pv[i]).replace('-', '−')); return t.length ? t.join(' + ') : '0'; }
+function intSum(B) { const t = []; for (let i = 0; i < B.length; i++) if (B[i] === '1') t.push(String(2 ** (B.length - 1 - i))); return t.length ? t.join(' + ') : '0'; }
+function movePoint(digits, k) {
+  const all = digits.replace('.', '');
+  const pos = 1 + k;
+  let int, frac;
+  if (pos >= all.length) { int = all + '0'.repeat(pos - all.length); frac = ''; }
+  else if (pos <= 0) { int = '0'; frac = '0'.repeat(-pos) + all; }
+  else { int = all.slice(0, pos); frac = all.slice(pos); }
+  const full = int + '.' + (frac || '0');
+  const pretty = (int.replace(/^0+/, '') || '0') + '.' + (frac.replace(/0+$/, '') || '0');
+  return { int, frac, full, pretty };
+}
+function pvTable(int, frac) {
+  let h = '<span class="pvt">';
+  const ii = int.replace(/^0+/, '') || '0';
+  for (let i = 0; i < ii.length; i++) h += `<span><b>${ii[i]}</b><small>${2 ** (ii.length - 1 - i)}</small></span>`;
+  h += '<span class="pv-pt">.</span>';
+  const ff = frac.replace(/0+$/, '');
+  for (let j = 0; j < ff.length; j++) h += `<span><b>${ff[j]}</b><small>1/${2 ** (j + 1)}</small></span>`;
+  if (!ff) h += '<span><b>0</b><small>1/2</small></span>';
+  return h + '</span>';
+}
+function fixedTerms(int, frac) {
+  const t = [];
+  const ii = int.replace(/^0+/, '') || '0';
+  for (let i = 0; i < ii.length; i++) if (ii[i] === '1') t.push(String(2 ** (ii.length - 1 - i)));
+  for (let j = 0; j < frac.length; j++) if (frac[j] === '1') t.push(FP.dec(1n, -(j + 1)));
+  return t;
+}
+function twosRows(label, bits, col) {
+  const inv = FP.invert(bits), res = FP.addOne(inv);
+  return { res, html: row(label, bitsHTML(bits, { col, sign: true }), 'start') + row('Invert', bitsHTML(inv, { col }), 'flip every bit') + row('Add 1', bitsHTML(res, { col, sign: true }), "two's complement") };
+}
+
+/* ============================================================
+   Step generators. Each returns {steps, ...}; a step is
+   {title, text (HTML), work (HTML of the worksheet so far), q?: {q, a, kind}, strip?: {sign, mant, exp}}
+   ============================================================ */
+function stepsFloatToDenary(M, E) {
+  const m = M.length, e = E.length, steps = [], W = [];
+  const push = s => { s.work = W.join(''); steps.push(s); };
+  const neg = M[0] === '1';
+  const expVal = FP.twos(E);
+
+  W.push(row('Mantissa', bitsHTML(dot(M), { sign: true, col: 'mant' }), `${m} bits, two's complement`));
+  W.push(row('Exponent', bitsHTML(E, { sign: true, col: 'exp' }), `${e} bits, two's complement`));
+  push({ title: 'Read the two parts', strip: { mant: 1, exp: 1 },
+    text: `The number is <b>mantissa × 2<sup>exponent</sup></b>. The mantissa carries the significant bits, with its binary point fixed just after the first bit. The exponent says how many places to move that point. Both parts are two's complement, so the first bit of each is a sign bit.` });
+
+  W.push(row('Sign', bitsHTML(M[0], { sign: true }), neg ? 'first bit is 1: the number is negative' : 'first bit is 0: the number is positive'));
+  push({ title: 'Read the sign', strip: { sign: 1 },
+    text: neg ? `The mantissa starts with a <b>1</b>, so the number is negative. We will work out its size first and put the minus sign back at the end.` : `The mantissa starts with a <b>0</b>, so the number is positive.`,
+    q: { q: 'Is the number positive or negative?', a: neg ? 'negative' : 'positive', kind: 'text', alt: neg ? ['neg', '-', 'minus'] : ['pos', '+', 'plus'] } });
+
+  if (FP.isZero(M)) {
+    W.push(row('Answer', '', '<b class="big">0</b>'));
+    push({ title: 'Zero is a special case', strip: { mant: 1 }, text: `A mantissa of all zeros is 0 whatever the exponent says (0 × 2<sup>${expVal}</sup> = 0). By convention zero is written with both mantissa and exponent all zeros. There is nothing to normalise because there is no 1 to put after the point.` });
+    return { steps, value: '0' };
+  }
+
+  W.push(row('Exponent', bitsHTML(E, { sign: true, col: 'exp' }), `= ${expSum(E)} = <b>${expVal}</b>`));
+  push({ title: 'Convert the exponent to denary', strip: { exp: 1 },
+    text: `The exponent is an ordinary ${e}-bit two's complement integer with place values ${expPV(e).map(v => String(v).replace('-', '−')).join(', ')}. ${E[0] === '1' ? `Its first bit is 1, so it is negative: ` : ''}${expSum(E)} = <b>${expVal}</b>.`,
+    q: { q: 'What is the exponent in denary?', a: expVal, kind: 'num' } });
+
+  let mag = M;
+  if (neg) {
+    const t = twosRows('Mantissa', M, 'mant');
+    mag = t.res;
+    W.push(t.html.replace("two's complement", mag[0] === '1' ? 'size is exactly 1' : 'the size, as a positive fraction'));
+    push({ title: 'Negative mantissa: find its size', strip: { mant: 1 },
+      text: `Find the two's complement of the mantissa: invert every bit, then add 1. ${mag[0] === '1' ? `Here the mantissa is <b>1.000…</b>, which is exactly −1. Its two's complement comes back as 1.000… again, so treat the size as <b>1</b> (a whole 1, not a fraction).` : `The result <b>${dot(mag)}</b> is the size of the mantissa as a positive binary fraction.`}<span class="aside">Alternative method, also accepted: keep the bits as they are and give the sign bit a place value of −1, so ${dot(M)} = −1 + ${fixedTerms('0', M.slice(1)).join(' + ') || '0'} = ${FP.dec(BigInt(FP.twos(M)), -(m - 1))}.</span>`,
+      q: { q: "What is the two's complement of the mantissa?", a: mag, kind: 'bits' } });
+  }
+
+  const mv = movePoint(dot(mag), expVal);
+  const dir = expVal > 0 ? `${plural(expVal, 'place')} to the right` : expVal < 0 ? `${plural(-expVal, 'place')} to the left` : 'nowhere';
+  W.push(row('Move point', bitsHTML(dot(mag), { col: 'mant' }) + arrow + bitsHTML(mv.full, { col: 'mant' }), dir));
+  push({ title: 'Move the binary point', strip: { mant: 1, exp: 1 },
+    text: `Multiplying by 2<sup>${expVal}</sup> moves the binary point <b>${dir}</b>. ${expVal > 0 ? 'Moving right makes the number bigger; if the point runs past the last bit, add zeros.' : expVal < 0 ? 'Moving left makes the number smaller; fill the gap with zeros.' : 'An exponent of 0 means 2<sup>0</sup> = 1, so the point stays where it is.'} Result: <b>${mv.pretty}</b>.`,
+    q: { q: 'Write the binary number after moving the point (include the point).', a: mv.pretty, kind: 'fixed' } });
+
+  const terms = fixedTerms(mv.int, mv.frac);
+  const magDec = FP.dec(BigInt(FP.uint(mag)), expVal - (m - 1));
+  W.push(row('Place values', pvTable(mv.int, mv.frac), ''));
+  W.push(row('Size', '', `${terms.join(' + ') || '0'} = <b>${magDec}</b>`));
+  push({ title: 'Convert the fixed-point binary to denary', strip: { mant: 1 },
+    text: `It is now an ordinary fixed-point binary number. Bits before the point have place values … 8, 4, 2, 1; bits after it have ½, ¼, ⅛, 1/16 … Add the place values of the 1s: ${terms.join(' + ') || '0'} = <b>${magDec}</b>.`,
+    q: { q: 'What is the size of the number in denary?', a: magDec, kind: 'num' } });
+
+  const val = (neg ? '-' : '') + magDec;
+  W.push(row('Answer', '', `<b class="big">${val.replace('-', '−')}</b>`));
+  push({ title: 'Put the sign back', strip: { sign: 1 },
+    text: `${neg ? `The number was negative, so the answer is <b>${val.replace('-', '−')}</b>.` : `The number is positive, so the answer is <b>${val}</b>.`} ${FP.isNorm(M) ? `The mantissa starts ${M[0]}.${M[1]}, so this was a normalised representation.` : `The mantissa starts ${M[0]}.${M[1]}, so this representation was not normalised (see the Normalise tab).`}`,
+    q: { q: 'What is the final value in denary?', a: val, kind: 'num' } });
+  return { steps, value: val };
+}
+
+function stepsDenaryToFloat(xStr, m, e) {
+  const P = FP.parseDec(xStr);
+  if (!P) return { error: 'Enter a denary number such as 5.5, -0.625 or 12.' };
+  const steps = [], W = [];
+  const push = s => { s.work = W.join(''); steps.push(s); };
+  const { neg, intStr, fracStr, abs } = P;
+  const x = P.str.replace('-', '−');
+
+  if (intStr === '0' && fracStr === '') {
+    const M = '0'.repeat(m), E = '0'.repeat(e);
+    W.push(row('Mantissa', bitsHTML(dot(M), { sign: true, col: 'mant' }), 'all zeros'));
+    W.push(row('Exponent', bitsHTML(E, { sign: true, col: 'exp' }), 'all zeros'));
+    push({ title: 'Zero is a special case', text: `0 × 2<sup>anything</sup> is 0, and there is no 1 to put after the point, so zero cannot be normalised. The convention is a mantissa of all zeros and an exponent of all zeros.` });
+    return { steps, M, E };
+  }
+
+  push({ title: 'Deal with the sign', text: neg ? `${x} is negative. Convert the positive value <b>${abs}</b> first; at the end we take the two's complement of the mantissa to make it negative.` : `${x} is positive, so the mantissa's sign bit will be 0.` });
+
+  const intBig = BigInt(intStr);
+  const intBin = intBig.toString(2);
+  W.push(row('Integer part', bitsHTML(intBin, { col: 'mant' }), intBig === 0n ? '0' : `${intStr} = ${intSum(intBin)}`));
+  push({ title: 'Integer part to binary',
+    text: intBig === 0n ? `The integer part is 0, so the binary number starts <b>0.</b> and all the work is in the fraction.` : `Convert ${intStr} to binary with place values: ${intStr} = ${intSum(intBin)} = <b>${intBin}</b>.`,
+    q: intBig === 0n ? null : { q: 'Write the integer part in binary.', a: intBin, kind: 'bits' } });
+
+  let fracBits = '', terminated = true;
+  if (fracStr) {
+    const d = fracStr.length, den = 10n ** BigInt(d);
+    let p = BigInt(fracStr);
+    const fracDec = v => (v === 0n ? '0' : '0.' + v.toString().padStart(d, '0').replace(/0+$/, ''));
+    let want;
+    if (intBig > 0n) want = Math.max(1, (m - 1) - intBin.length + 1);
+    let rows = '', count = 0, firstOne = -1;
+    terminated = false;
+    while (count < 64) {
+      const q = p * 2n, bit = q >= den ? 1 : 0; const rem = bit ? q - den : q;
+      rows += `<tr><td>${fracDec(p)}</td><td>${bit}${fracDec(rem).slice(1) || '.0'}</td><td class="bit">${bit}</td><td>${fracDec(rem)}</td></tr>`;
+      fracBits += bit; count++; p = rem;
+      if (bit && firstOne < 0) firstOne = count;
+      if (p === 0n) { terminated = true; break; }
+      if (intBig > 0n) { if (count >= want) break; }
+      else if (firstOne > 0 && count - firstOne + 1 >= m) break;
+    }
+    if (intBig === 0n && firstOne < 0) {
+      push({ title: 'Too small for this format', text: `After 64 doublings there is still no 1 bit: ${abs} is far too small to represent with this exponent width.` });
+      return { steps, error: 'too small' };
+    }
+    W.push(row('Fraction part', `<table class="dbl"><thead><tr><th>Fraction</th><th>× 2</th><th>Bit</th><th>Carry on with</th></tr></thead><tbody>${rows}</tbody></table>`, ''));
+    W.push(row('', bitsHTML('0.' + fracBits, { col: 'mant' }), terminated ? 'reached 0: exact' : 'not finished: more bits exist'));
+    push({ title: 'Fraction part by repeated doubling',
+      text: `Double the fraction. The digit that appears before the point (0 or 1) is the next bit, and you carry on with the fraction that is left. ${terminated ? `It reached exactly 0 after ${plural(count, 'doubling')}, so 0.${fracStr} = <b>0.${fracBits}</b> exactly.` : `It never reaches 0, so 0.${fracStr} has no finite binary fraction. We stop once we have enough bits for the mantissa; the rest will be truncated, so the stored value will be an approximation.`}`,
+      q: { q: 'Write the fraction part in binary (the bits from the table).', a: fracBits, kind: 'bits' } });
+  } else {
+    push({ title: 'No fraction part', text: `${abs} is a whole number, so there are no bits after the point.` });
+  }
+
+  const fixed = intBin + '.' + (fracBits || '0');
+  W.push(row('Together', bitsHTML(fixed, { col: 'mant' }), `${abs} in fixed-point binary`));
+  push({ title: 'Put the two parts together', text: `${abs} = <b>${fixed}</b> in binary. It is not yet in floating point form: the point is still in its natural place.` });
+
+  let expVal, normDigits, moved;
+  if (intBig > 0n) { expVal = intBin.length; normDigits = intBin + fracBits; moved = `${plural(expVal, 'place')} to the <b>left</b>`; }
+  else { const z = fracBits.indexOf('1'); expVal = -z; normDigits = fracBits.slice(z); moved = z === 0 ? 'nowhere: it is already just before the first 1' : `${plural(z, 'place')} to the <b>right</b>`; }
+  W.push(row('Normalise', bitsHTML(fixed, { col: 'mant' }) + arrow + bitsHTML('0.' + normDigits, { col: 'mant' }), `point moved ${moved.replace(/<\/?b>/g, '')}: exponent ${expVal}`));
+  push({ title: 'Normalise: move the point to just before the first 1',
+    text: `A normalised positive mantissa starts <b>0.1</b>. Move the point ${moved}. ${expVal > 0 ? `Each place moved left halves the mantissa, so the exponent must go up by 1 each time to compensate: exponent = <b>+${expVal}</b>.` : expVal < 0 ? `Each place moved right doubles the mantissa, so the exponent must go down by 1 each time: exponent = <b>${expVal}</b>.` : `Nothing moved, so the exponent is <b>0</b>.`} So ${abs} = 0.${normDigits} × 2<sup>${expVal}</sup>.`,
+    q: { q: 'What is the exponent in denary?', a: expVal, kind: 'num' } });
+
+  const keep = normDigits.slice(0, m - 1), lost = normDigits.slice(m - 1);
+  const truncated = lost.includes('1') || !terminated;
+  const Mpos = '0' + keep.padEnd(m - 1, '0');
+  W.push(row('Mantissa', bitsHTML(dot(Mpos), { sign: true, col: 'mant', lost }), truncated ? 'struck-out bits do not fit: truncated' : keep.length < m - 1 ? `padded with zeros to ${m} bits` : `${m} bits`));
+  push({ title: `Write the mantissa in ${m} bits`,
+    text: `Sign bit 0, then the bits after the point. ${keep.length < m - 1 ? `There are only ${keep.length}, so pad on the right with zeros: trailing zeros after the point change nothing.` : ''}${truncated ? `Only ${m - 1} bits fit after the point, so the rest are dropped. This is truncation: the stored value is slightly smaller than ${abs}.` : lost ? 'The dropped bits are all zeros, so nothing is lost.' : ''} Mantissa: <b>${Mpos}</b>.`,
+    q: { q: `Write the positive mantissa as ${m} bits.`, a: Mpos, kind: 'bits' } });
+
+  const rangeFail = v => ({ title: 'Exponent out of range', text: `The exponent would be ${v}, but ${e} bits in two's complement can only hold ${FP.min(e)} to ${FP.max(e)}. ${v > 0 ? `${abs} is too large` : `${abs} is too small`} for this format. In the exam this is an overflow (or underflow) error; a wider exponent would be needed.` });
+  if (!FP.inRange(expVal, e)) { push(rangeFail(expVal)); return { steps, error: 'range' }; }
+  let Ebits = FP.toBits(expVal, e);
+  if (expVal < 0) {
+    const posB = FP.toBits(-expVal, e), t = twosRows(`+${-expVal}`, posB, 'exp');
+    W.push(t.html);
+    push({ title: `Exponent in ${e}-bit two's complement`, text: `The exponent is negative, so write +${-expVal} in ${e} bits (${posB}), invert every bit (${FP.invert(posB)}) and add 1: <b>${Ebits}</b>. Check: ${expSum(Ebits)} = ${expVal}.`, q: { q: `Write the exponent as ${e}-bit two's complement.`, a: Ebits, kind: 'bits' } });
+  } else {
+    W.push(row('Exponent', bitsHTML(Ebits, { sign: true, col: 'exp' }), `${expVal} in ${e} bits`));
+    push({ title: `Exponent in ${e}-bit two's complement`, text: `${expVal} is positive, so it is just ${expVal} in binary padded to ${e} bits: <b>${Ebits}</b>. The first bit is 0, as it must be for a positive exponent.`, q: { q: `Write the exponent as ${e} bits.`, a: Ebits, kind: 'bits' } });
+  }
+
+  let M = Mpos;
+  if (neg) {
+    const t = twosRows('Mantissa', Mpos, 'mant');
+    const Mneg = t.res;
+    W.push(t.html);
+    push({ title: 'Make the mantissa negative', text: `Now take the two's complement of the whole mantissa: invert every bit and add 1. Positive ${dot(Mpos)} becomes <b>${dot(Mneg)}</b>. The exponent does not change.`, q: { q: "What is the two's complement of the mantissa?", a: Mneg, kind: 'bits' } });
+    M = Mneg;
+    if (!FP.isNorm(Mneg)) {
+      expVal -= 1;
+      M = Mneg.slice(1) + '0';
+      if (!FP.inRange(expVal, e)) { push(rangeFail(expVal)); return { steps, error: 'range' }; }
+      Ebits = FP.toBits(expVal, e);
+      W.push(row('Renormalise', bitsHTML(dot(Mneg), { col: 'mant' }) + arrow + bitsHTML(dot(M), { sign: true, col: 'mant' }) + ' ' + bitsHTML(Ebits, { sign: true, col: 'exp' }), `exponent ${expVal + 1} → ${expVal}`));
+      push({ title: 'Careful: renormalise', text: `${dot(Mneg)} starts <b>1.1</b>, which is not normalised (a negative mantissa must start 1.0). This always happens when the size is an exact power of two, because the positive mantissa was 0.1000…. Shift the mantissa one place left to get <b>${dot(M)}</b> and take 1 off the exponent: <b>${expVal}</b> (${Ebits}). The value is unchanged: −0.1 × 2<sup>${expVal + 1}</sup> = −1.0 × 2<sup>${expVal}</sup>.`, q: { q: 'What is the exponent now, in denary?', a: expVal, kind: 'num' } });
+    }
+  }
+
+  const back = FP.valDec(M, Ebits);
+  const exact = FP.sameDec(back, P.str);
+  W.push(row('Answer', bitsHTML(M, { sign: true, col: 'mant' }) + ' ' + bitsHTML(Ebits, { sign: true, col: 'exp' }), `mantissa ${M}, exponent ${Ebits}`));
+  push({ title: 'Answer and check', text: `Mantissa <b>${M}</b>, exponent <b>${Ebits}</b>. Check by converting back: ${dot(M)} × 2<sup>${expVal}</sup> = ${back.replace('-', '−')}${exact ? ', exactly the number we started with.' : `. We started with ${x}; the difference is the truncation error from the bits that did not fit.`}` });
+  return { steps, M, E: Ebits, exact };
+}
+
+function stepsNormalise(M, E) {
+  const e = E.length, steps = [], W = [];
+  const push = s => { s.work = W.join(''); steps.push(s); };
+  let Ev = FP.twos(E);
+  const before = FP.valDec(M, E).replace('-', '−');
+  W.push(row('Start', bitsHTML(dot(M), { sign: true, col: 'mant' }) + ' ' + bitsHTML(E, { sign: true, col: 'exp' }), `${dot(M)} × 2<sup>${Ev}</sup> = <b>${before}</b>`));
+  if (FP.isZero(M)) {
+    push({ title: 'Zero is a special case', strip: { mant: 1 }, text: `A mantissa of all zeros is 0 whatever the exponent. There is no 1 to put after the point, so zero cannot be normalised. The convention is mantissa 0 and exponent 0.` });
+    return { steps, M, E: '0'.repeat(e) };
+  }
+  if (FP.isNorm(M)) {
+    push({ title: 'Already normalised', strip: { mant: 1 }, text: `${dot(M)} starts <b>${M[0]}.${M[1]}</b>: the first two bits differ, so it is already normalised. ${M[0] === '0' ? 'A positive normalised mantissa starts 0.1.' : 'A negative normalised mantissa starts 1.0.'} Nothing to do.` });
+    return { steps, M, E };
+  }
+  push({ title: 'Not normalised', strip: { mant: 1 }, text: `${dot(M)} starts <b>${M[0]}.${M[1]}</b>. The first two bits are the same, so the first bit after the point is wasted: it only repeats the sign. ${M[0] === '0' ? 'A positive mantissa should start 0.1.' : 'A negative mantissa should start 1.0.'} Fix it by shifting left and lowering the exponent.` });
+  let cur = M, n = 0;
+  while (!FP.isNorm(cur)) {
+    if (!FP.inRange(Ev - 1, e)) {
+      push({ title: 'Cannot normalise in this format', text: `The exponent is already at its minimum, ${Ev}, so there is no room to shift again. The number is too small to be normalised with a ${e}-bit exponent.` });
+      return { steps, M: cur, E: FP.toBits(Ev, e), error: 'range' };
+    }
+    const nxt = cur.slice(1) + '0'; Ev -= 1; n++;
+    W.push(row(`Shift ${n}`, bitsHTML(dot(nxt), { sign: true, col: 'mant' }) + ' ' + bitsHTML(FP.toBits(Ev, e), { sign: true, col: 'exp' }), `exponent ${Ev + 1} → ${Ev}`));
+    push({ title: `Shift left, exponent − 1`, strip: { mant: 1, exp: 1 },
+      text: `Shift the mantissa one place left. The leading bit drops off (it was only a copy of the sign bit, so no information is lost) and a 0 comes in on the right. Shifting left doubles the mantissa, so take 1 off the exponent to halve the number back: ${Ev + 1} → <b>${Ev}</b>. Now ${dot(nxt)} × 2<sup>${Ev}</sup>.${FP.isNorm(nxt) ? ' The first two bits now differ: normalised.' : ' The first two bits are still the same, so shift again.'}`,
+      q: { q: 'What is the exponent now, in denary?', a: Ev, kind: 'num' } });
+    cur = nxt;
+  }
+  const Eb = FP.toBits(Ev, e);
+  const after = FP.valDec(cur, Eb).replace('-', '−');
+  W.push(row('Answer', bitsHTML(cur, { sign: true, col: 'mant' }) + ' ' + bitsHTML(Eb, { sign: true, col: 'exp' }), `= <b>${after}</b>`));
+  push({ title: 'Normalised', strip: { mant: 1, exp: 1 }, text: `Mantissa <b>${cur}</b>, exponent <b>${Eb}</b> (${Ev}). Check: ${before} before and ${after} after. The value is unchanged; only the representation has.`, q: { q: 'Write the normalised mantissa.', a: cur, kind: 'bits' } });
+  return { steps, M: cur, E: Eb };
+}
+
+function addBits(x, y) {
+  let carry = 0, sum = ''; const carries = new Array(x.length).fill(0);
+  for (let i = x.length - 1; i >= 0; i--) { const s = +x[i] + +y[i] + carry; sum = (s & 1) + sum; carry = s >> 1; carries[i] = carry; }
+  return { sum, carries, carryOut: carry };
+}
+function colAddHTML(x, y, sum, carries, carryOut) {
+  const n = x.length;
+  const slot = (t, cls = '') => `<span class="b ${cls}">${t === ' ' ? '&nbsp;' : t}</span>`;
+  const line = (lead, s, cls, leadCls = 'sym') => { let h = `<div class="crow">${slot(lead, leadCls)}`; for (let i = 0; i < n; i++) { h += slot(s[i], cls); if (i === 1) h += '<span class="pt">.</span>'; } return h + '</div>'; };
+  let cs = ''; for (let i = 0; i < n; i++) cs += (i < n - 1 && carries[i + 1]) ? '1' : ' ';
+  return `<div class="colblock">${line(carryOut ? '1' : ' ', cs, 'carry', 'carry strike')}${line(' ', x, 'mant')}${line('+', y, 'mant')}<div class="crow rule"></div>${line(' ', sum, 'res')}</div>`;
+}
+
+function stepsAdd(MA, EA, MB, EB, op) {
+  const m = MA.length, e = EA.length, steps = [], W = [];
+  const push = s => { s.work = W.join(''); steps.push(s); };
+  const a = FP.value(MA, EA), b = FP.value(MB, EB);
+  const aDec = FP.dec(a.n, a.p).replace('-', '−'), bDec = FP.dec(b.n, b.p).replace('-', '−');
+  const exact = FP.addVals(a, op === '-' ? FP.negVal(b) : b);
+  const exactDec = FP.dec(exact.n, exact.p).replace('-', '−');
+  const opWord = op === '-' ? '−' : '+';
+  let XA = MA[0] + MA, XB = MB[0] + MB, ea = FP.twos(EA), eb = FP.twos(EB);
+  let lostAny = false;
+
+  W.push(row('A', bitsHTML(dot(MA), { sign: true, col: 'mant' }) + ' ' + bitsHTML(EA, { sign: true, col: 'exp' }), `= ${aDec}`));
+  W.push(row('B', bitsHTML(dot(MB), { sign: true, col: 'mant' }) + ' ' + bitsHTML(EB, { sign: true, col: 'exp' }), `= ${bDec}`));
+  push({ title: 'The two numbers', text: `A = ${aDec} (exponent ${ea}) and B = ${bDec} (exponent ${eb}). We want A ${opWord} B, which in denary is ${exactDec}; the point of the exercise is to get there in binary.${!FP.isNorm(MA) || !FP.isNorm(MB) ? ' One of the inputs is not normalised; the method still works.' : ''}` });
+
+  W.push(row('A (working)', bitsHTML(dot2(XA), { col: 'mant' }), `exponent ${ea}`));
+  W.push(row('B (working)', bitsHTML(dot2(XB), { col: 'mant' }), `exponent ${eb}`));
+  push({ title: 'Give each mantissa a spare bit', text: `Adding two mantissas can give a result up to twice the size, which needs one more bit before the point. So in the working, each mantissa gets an extra bit on the left that is a copy of its sign bit: ${dot2(XA)} and ${dot2(XB)}. Copying the sign bit does not change the value (sign extension).` });
+
+  if (op === '-') {
+    const inv = FP.invert(XB), ng = FP.addOne(inv);
+    W.push(row('−B', bitsHTML(dot2(XB), { col: 'mant' }), 'invert, add 1'));
+    W.push(row('', bitsHTML(dot2(inv), { col: 'mant' }), 'inverted'));
+    W.push(row('', bitsHTML(dot2(ng), { col: 'mant' }), '+1: this is −B'));
+    push({ title: 'Subtracting: add the negative', text: `A − B is the same as A + (−B). Negate B's working mantissa with two's complement: invert every bit, then add 1. ${dot2(XB)} becomes <b>${dot2(ng)}</b>. The spare bit means there is always room, even for a mantissa of 1.000… (which is −1 and becomes +1 = 01.000…).`, q: { q: "What is the two's complement of B's working mantissa?", a: ng, kind: 'bits' } });
+    XB = ng;
+  }
+
+  let Ev;
+  if (ea !== eb) {
+    const d = Math.abs(ea - eb); Ev = Math.max(ea, eb);
+    const who = ea < eb ? 'A' : 'B';
+    const X = ea < eb ? XA : XB;
+    const shifted = X[0].repeat(Math.min(d, m + 1)) + X.slice(0, Math.max(0, m + 1 - d));
+    const lost = X.slice(Math.max(0, m + 1 - d));
+    if (lost.includes('1')) lostAny = true;
+    if (ea < eb) XA = shifted; else XB = shifted;
+    W.push(row(`Shift ${who}`, bitsHTML(dot2(X), { col: 'mant' }) + arrow + bitsHTML(dot2(shifted), { col: 'mant', lost }), `${plural(d, 'place')} right, exponent ${Math.min(ea, eb)} → ${Ev}`));
+    push({ title: 'Make the exponents equal', text: `The mantissas can only be added when both numbers use the same exponent. Always shift the one with the <b>smaller</b> exponent to the right (shifting the other one left could push its most significant bits off the end). ${who} has the smaller exponent, so shift its mantissa ${plural(d, 'place')} right, bringing copies of its sign bit in on the left, and raise its exponent from ${Math.min(ea, eb)} to <b>${Ev}</b>. Dividing the mantissa by 2<sup>${d}</sup> while multiplying by 2<sup>${d}</sup> more keeps the value the same${lost.includes('1') ? `, except that the struck-out bit${lost.replace(/0/g, '').length > 1 ? 's' : ''} fell off the end: ${who} has lost some precision.` : '. The bits that fell off were zeros, so nothing was lost.'}`, q: { q: `Write ${who}'s shifted working mantissa (${m + 1} bits).`, a: shifted, kind: 'bits' } });
+  } else {
+    Ev = ea;
+    push({ title: 'Exponents already match', text: `Both exponents are ${ea}, so the mantissas already line up and nothing needs shifting.` });
+  }
+
+  const { sum, carries, carryOut } = addBits(XA, XB);
+  W.push(row('Add', colAddHTML(XA, XB, sum, carries, carryOut), ''));
+  push({ title: 'Add the mantissas', text: `Add column by column from the right, exactly like two's complement integers: 1 + 1 = 10 (write 0, carry 1) and 1 + 1 + 1 = 11 (write 1, carry 1). The point just stays where it is. ${carryOut ? 'The carry out of the leftmost column is <b>discarded</b>: in two\'s complement it carries no information.' : ''} Result: <b>${dot2(sum)}</b> with exponent ${Ev}.`, q: { q: `What is the sum of the working mantissas (${m + 1} bits)?`, a: sum, kind: 'bits' } });
+
+  let M;
+  if (FP.isZero(sum)) {
+    M = '0'.repeat(m); Ev = 0;
+    W.push(row('Result', bitsHTML(dot(M), { sign: true, col: 'mant' }) + ' ' + bitsHTML('0'.repeat(e), { sign: true, col: 'exp' }), '= 0'));
+    push({ title: 'The result is zero', text: `All the bits are 0, so the answer is exactly 0. Zero cannot be normalised; write it as mantissa 0, exponent 0.` });
+    return { steps, M, E: '0'.repeat(e), exact: true };
+  }
+  if (sum[0] !== sum[1]) {
+    const lostBit = sum[m];
+    M = sum.slice(0, m); Ev += 1;
+    if (lostBit === '1') lostAny = true;
+    W.push(row('Normalise', bitsHTML(dot2(sum), { col: 'mant' }) + arrow + bitsHTML(dot(M), { sign: true, col: 'mant', lost: lostBit }), `shift right, exponent ${Ev - 1} → ${Ev}`));
+    push({ title: 'Normalise: the result grew past the point', text: `${dot2(sum)} has two different bits before the point, so its size is 1 or more: too big for a normalised mantissa. Shift it one place <b>right</b> and add 1 to the exponent: <b>${dot(M)}</b> × 2<sup>${Ev}</sup>.${lostBit === '1' ? ' The bit that falls off the right-hand end is lost: truncation.' : ' The bit that falls off is a 0, so nothing is lost.'} It now starts ${M[0]}.${M[1]}: normalised.`, q: { q: 'What is the exponent now, in denary?', a: Ev, kind: 'num' } });
+  } else {
+    M = sum.slice(1);
+    W.push(row('Drop spare', bitsHTML(dot2(sum), { col: 'mant' }) + arrow + bitsHTML(dot(M), { sign: true, col: 'mant' }), `exponent ${Ev}`));
+    push({ title: 'Drop the spare bit', text: `The two bits before the point are the same, so the spare bit is only a copy of the sign bit. Drop it: <b>${dot(M)}</b> × 2<sup>${Ev}</sup>.${FP.isNorm(M) ? ' This starts ' + M[0] + '.' + M[1] + ', so it is already normalised.' : ' This is not normalised yet: the first two bits are the same.'}` });
+    let n = 0;
+    while (!FP.isNorm(M)) {
+      if (!FP.inRange(Ev - 1, e)) { push({ title: 'Cannot normalise in this format', text: `The exponent is already at its minimum, ${Ev}. The result is too small to normalise with a ${e}-bit exponent.` }); return { steps, M, E: FP.toBits(Ev, e), error: 'range' }; }
+      const nxt = M.slice(1) + '0'; Ev -= 1; n++;
+      W.push(row(`Shift left ${n}`, bitsHTML(dot(nxt), { sign: true, col: 'mant' }), `exponent ${Ev + 1} → ${Ev}`));
+      push({ title: 'Normalise: shift left, exponent − 1', text: `Shift the mantissa one place left and take 1 off the exponent: <b>${dot(nxt)}</b> × 2<sup>${Ev}</sup>.${FP.isNorm(nxt) ? ' Normalised.' : ' Still not normalised; shift again.'}`, q: { q: 'What is the exponent now, in denary?', a: Ev, kind: 'num' } });
+      M = nxt;
+    }
+  }
+  if (!FP.inRange(Ev, e)) { push({ title: 'Exponent out of range', text: `The result needs an exponent of ${Ev}, but ${e} bits only hold ${FP.min(e)} to ${FP.max(e)}: overflow. The answer cannot be represented in this format.` }); return { steps, M, error: 'range' }; }
+  const Eb = FP.toBits(Ev, e);
+  const got = FP.value(M, Eb);
+  const same = FP.eqVals(got, exact);
+  const gotDec = FP.dec(got.n, got.p).replace('-', '−');
+  W.push(row('Answer', bitsHTML(M, { sign: true, col: 'mant' }) + ' ' + bitsHTML(Eb, { sign: true, col: 'exp' }), `= <b class="big">${gotDec}</b>`));
+  push({ title: 'Answer and check', text: `Mantissa <b>${M}</b>, exponent <b>${Eb}</b> (${Ev}), which is ${gotDec}. ${same ? `That is exactly ${aDec} ${opWord} ${bDec} = ${exactDec}.` : `The exact answer is ${exactDec}, so there is a rounding error of ${FP.dec(FP.addVals(exact, FP.negVal(got)).n, Math.min(exact.p, got.p)).replace('-', '−')}${lostAny ? ', caused by the bits that were truncated along the way.' : '.'}`}`, q: { q: 'What is the result in denary?', a: FP.dec(got.n, got.p), kind: 'num' } });
+  return { steps, M, E: Eb, exact: same };
+}
+
+function extremes(m, e) {
+  const mk = (M, E) => ({ M, E, dec: FP.valDec(M, E) });
+  return [
+    { name: 'Largest positive', how: 'biggest positive mantissa, biggest exponent', ...mk('0' + '1'.repeat(m - 1), '0' + '1'.repeat(e - 1)) },
+    { name: 'Smallest positive (normalised)', how: 'smallest normalised positive mantissa, most negative exponent', ...mk('01' + '0'.repeat(m - 2), '1' + '0'.repeat(e - 1)) },
+    { name: 'Negative closest to zero', how: 'negative mantissa nearest to −½, most negative exponent', ...mk('10' + '1'.repeat(m - 2), '1' + '0'.repeat(e - 1)) },
+    { name: 'Most negative', how: 'mantissa −1, biggest exponent', ...mk('1' + '0'.repeat(m - 1), '0' + '1'.repeat(e - 1)) }
+  ];
+}
+
+if (typeof globalThis !== 'undefined') globalThis.__FP = { FP, stepsFloatToDenary, stepsDenaryToFloat, stepsNormalise, stepsAdd, extremes };
+
+/* ============================================================
+   Page wiring
+   ============================================================ */
+if (typeof document !== 'undefined') (() => {
+  const $ = s => document.querySelector(s);
+  const G = { m: 8, e: 4, quiz: false, score: [0, 0] };
+  const sizeSel = (sel, lo, hi, v) => { for (let i = lo; i <= hi; i++) { const o = document.createElement('option'); o.value = i; o.textContent = i; if (i === v) o.selected = true; sel.appendChild(o); } };
+  sizeSel($('#mBits'), 4, 12, 8); sizeSel($('#eBits'), 3, 8, 4);
+
+  function renderScore() { $('#score').textContent = `${G.score[0]} / ${G.score[1]}`; $('#scoreBox').hidden = !G.quiz; }
+  $('#quizOn').addEventListener('change', ev => { G.quiz = ev.target.checked; renderScore(); });
+
+  /* ---------- Bit strip ---------- */
+  function renderStrip(el, M, E, o = {}) {
+    const m = M.length, e = E.length;
+    const cell = (f, i, ch) => o.editable ? `<button type="button" class="cell${i === 0 ? ' sign' : ''}" data-f="${f}" data-i="${i}" aria-label="${f === 'M' ? 'Mantissa' : 'Exponent'} bit ${i}">${ch}</button>` : `<span class="cell${i === 0 ? ' sign' : ''}">${ch}</span>`;
+    let mc = '', mp = '';
+    for (let i = 0; i < m; i++) { mc += cell('M', i, M[i]); mp += `<span>${fracLabel(i)}</span>`; if (i === 0) { mc += '<span class="point">.</span>'; mp += '<span class="ptgap"></span>'; } }
+    let ec = '', ep = '';
+    const pv = expPV(e);
+    for (let i = 0; i < e; i++) { ec += cell('E', i, E[i]); ep += `<span>${String(pv[i]).replace('-', '−')}</span>`; }
+    el.innerHTML = `<div class="field mant"><div class="flabel">Mantissa <span>· ${m} bits</span></div><div class="cells">${mc}</div><div class="pvs">${mp}</div></div><div class="times">× 2<sup>exp</sup></div><div class="field exp"><div class="flabel">Exponent <span>· ${e} bits</span></div><div class="cells">${ec}</div><div class="pvs">${ep}</div></div>`;
+  }
+  function stripHighlight(el, h) {
+    el.querySelector('.field.mant').classList.toggle('hl', !!(h && h.mant));
+    el.querySelector('.field.exp').classList.toggle('hl', !!(h && h.exp));
+    el.querySelectorAll('.cell.sign')[0].classList.toggle('hl', !!(h && h.sign));
+  }
+
+  /* ---------- Walkthrough ---------- */
+  function makeWalkthrough(root, opts = {}) {
+    root.innerHTML = `<div class="controls"><button class="btn primary" data-act="next" type="button">Next step <kbd>→</kbd></button><button class="btn" data-act="finish" type="button">Show all</button><button class="btn" data-act="reset" type="button">Restart</button></div>
+      <div class="narration" aria-live="polite"><div class="narr-top"><span class="stage-tag ready">Ready</span><span class="step-count"></span></div><h3 class="step-title"></h3><div class="step-text"></div>
+      <div class="ask" hidden><p class="qq"></p><form autocomplete="off"><input type="text" aria-label="Your answer" spellcheck="false"><button class="btn primary" type="submit">Check</button><button class="btn" type="button" data-act="show">Show me</button></form><div class="fb" role="status"></div></div></div>
+      <div class="work"></div>`;
+    const el = {
+      next: root.querySelector('[data-act="next"]'), finish: root.querySelector('[data-act="finish"]'), reset: root.querySelector('[data-act="reset"]'),
+      tag: root.querySelector('.stage-tag'), count: root.querySelector('.step-count'), title: root.querySelector('.step-title'), text: root.querySelector('.step-text'),
+      ask: root.querySelector('.ask'), qq: root.querySelector('.qq'), form: root.querySelector('form'), input: root.querySelector('input'), show: root.querySelector('[data-act="show"]'), fb: root.querySelector('.fb'), work: root.querySelector('.work')
+    };
+    const w = { steps: [], i: -1, pending: null, intro: '' };
+    function buttons() {
+      const done = w.i >= w.steps.length - 1;
+      el.next.disabled = done || !w.steps.length; el.finish.disabled = done || !w.steps.length; el.reset.disabled = w.i < 0;
+    }
+    function showIntro() {
+      el.tag.textContent = 'Ready'; el.tag.className = 'stage-tag ready'; el.count.textContent = w.steps.length ? `${w.steps.length} steps` : '';
+      el.title.textContent = w.steps.length ? 'Press Next step to begin' : 'Nothing to show';
+      el.text.innerHTML = w.intro; el.work.innerHTML = ''; el.ask.hidden = true; w.pending = null;
+      if (opts.onStep) opts.onStep(null);
+      buttons();
+    }
+    function reveal(st) {
+      w.i++;
+      const last = w.i === w.steps.length - 1;
+      el.tag.textContent = last ? 'Done' : `Step ${w.i + 1}`; el.tag.className = 'stage-tag' + (last ? ' done' : '');
+      el.count.textContent = `${w.i + 1} of ${w.steps.length}`;
+      el.title.textContent = st.title; el.text.innerHTML = st.text; el.work.innerHTML = st.work || '';
+      if (opts.onStep) opts.onStep(st);
+      buttons();
+    }
+    function next() {
+      if (w.pending) { el.input.focus(); return; }
+      const st = w.steps[w.i + 1]; if (!st) return;
+      if (G.quiz && st.q) {
+        w.pending = st; el.qq.textContent = st.q.q; el.input.value = ''; el.fb.textContent = ''; el.fb.className = 'fb'; el.ask.hidden = false; el.input.focus({ preventScroll: true });
+      } else reveal(st);
+    }
+    function check(given, q) {
+      const g = String(given).trim();
+      if (q.kind === 'bits') return g.replace(/[\s.]/g, '') === String(q.a).replace(/[\s.]/g, '');
+      if (q.kind === 'fixed') return FP.canonFixed(g) !== null && FP.canonFixed(g) === FP.canonFixed(q.a);
+      if (q.kind === 'num') { const n = FP.parseNum(g); const a = Number(q.a); return n !== null && Math.abs(n - a) <= 1e-9 * Math.max(1, Math.abs(a)); }
+      if (q.kind === 'text') { const l = g.toLowerCase(); return l === String(q.a).toLowerCase() || (q.alt || []).includes(l); }
+      return false;
+    }
+    el.form.addEventListener('submit', ev => {
+      ev.preventDefault(); if (!w.pending) return;
+      const ok = check(el.input.value, w.pending.q);
+      if (ok) { G.score[0]++; G.score[1]++; renderScore(); el.fb.textContent = 'Correct.'; el.fb.className = 'fb ok'; const st = w.pending; w.pending = null; setTimeout(() => { el.ask.hidden = true; reveal(st); }, 500); }
+      else { el.fb.textContent = 'Not quite. Try again, or press Show me.'; el.fb.className = 'fb bad'; }
+    });
+    el.show.addEventListener('click', () => { if (!w.pending) return; G.score[1]++; renderScore(); const st = w.pending; w.pending = null; el.ask.hidden = true; reveal(st); });
+    el.next.addEventListener('click', next);
+    el.finish.addEventListener('click', () => { w.pending = null; el.ask.hidden = true; while (w.i < w.steps.length - 1) reveal(w.steps[w.i + 1]); });
+    el.reset.addEventListener('click', () => { w.i = -1; showIntro(); });
+    return {
+      load(steps, intro = '') { w.steps = steps || []; w.i = -1; w.intro = intro; showIntro(); },
+      next, finishAll() { el.finish.click(); }, root
+    };
+  }
+
+  /* ---------- Tabs ---------- */
+  const TABS = ['f2d', 'd2f', 'norm', 'add', 'range', 'practice'];
+  let curTab = 'f2d';
+  function showTab(id) {
+    curTab = id;
+    TABS.forEach(t => { $('#tab-' + t).hidden = t !== id; });
+    document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === id ? 'true' : 'false'));
+    if (id === 'range') renderRange();
+  }
+  $('#tabs').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) showTab(b.dataset.tab); });
+  try { const h = location.hash.slice(1); if (TABS.includes(h)) showTab(h); } catch (_) {}
+
+  const WT = {};
+  const encode = x => { const r = stepsDenaryToFloat(x, G.m, G.e); return r.M ? r : null; };
+
+  /* ---------- Tab: binary → denary ---------- */
+  const S1 = { M: '01011000', E: '0011' };
+  WT.f2d = makeWalkthrough($('#wt-f2d'), { onStep: st => stripHighlight($('#f2dStrip'), st && st.strip) });
+  const F2D_PRESETS = [
+    ['5.5 (positive)', '5.5'], ['−2.5 (negative mantissa)', '-2.5'], ['0.15625 (negative exponent)', '0.15625'], ['−0.5 (mantissa 1.000)', '-0.5'],
+    ['100 (large exponent)', '100'], ['−1', '-1'], ['0.1 (truncated)', '0.1'], ['Unnormalised example', 'unnorm'], ['Zero', '0']
+  ];
+  function f2dLoad(msgFromInput) {
+    renderStrip($('#f2dStrip'), S1.M, S1.E, { editable: true });
+    if (!msgFromInput) { $('#f2dM').value = S1.M; $('#f2dE').value = S1.E; }
+    const m = S1.M.length, mant = FP.dec(BigInt(FP.twos(S1.M)), -(m - 1)), ex = FP.twos(S1.E);
+    const norm = FP.isNorm(S1.M), zero = FP.isZero(S1.M);
+    $('#f2dRead').innerHTML = `<div><dt>Sign</dt><dd>${S1.M[0] === '1' ? 'negative' : 'positive'}</dd></div>
+      <div><dt>Exponent</dt><dd>${esc(S1.E)} = ${ex}</dd></div>
+      <div><dt>Mantissa</dt><dd>${esc(dot(S1.M))} = ${mant}</dd></div>
+      <div><dt>Value</dt><dd>${mant} × 2<sup>${ex}</sup> = ${FP.valDec(S1.M, S1.E)}</dd></div>
+      <div><dt>Normalised?</dt><dd><span class="badge${norm ? '' : ' no'}">${zero ? 'zero' : norm ? 'yes' : 'no'}</span> <small>${zero ? 'zero cannot be normalised' : norm ? `starts ${S1.M[0]}.${S1.M[1]}` : `starts ${S1.M[0]}.${S1.M[1]}, should be 0.1 or 1.0`}</small></dd></div>`;
+    WT.f2d.load(stepsFloatToDenary(S1.M, S1.E).steps, 'Step through the conversion of the number on the left. Click a bit on the strip to change it.');
+  }
+  $('#f2dStrip').addEventListener('click', ev => {
+    const b = ev.target.closest('button.cell'); if (!b) return;
+    const i = +b.dataset.i, f = b.dataset.f;
+    const flip = s => s.slice(0, i) + (s[i] === '1' ? '0' : '1') + s.slice(i + 1);
+    if (f === 'M') S1.M = flip(S1.M); else S1.E = flip(S1.E);
+    $('#f2dMsg').textContent = ''; f2dLoad();
+  });
+  function f2dFromInputs() {
+    const M = $('#f2dM').value.replace(/[\s.]/g, ''), E = $('#f2dE').value.replace(/[\s.]/g, '');
+    if (!FP.validBits(M, G.m) || !FP.validBits(E, G.e)) { $('#f2dMsg').textContent = `Enter exactly ${G.m} mantissa bits and ${G.e} exponent bits (0s and 1s).`; return; }
+    $('#f2dMsg').textContent = ''; S1.M = M; S1.E = E; f2dLoad(true);
+  }
+  $('#f2dM').addEventListener('input', f2dFromInputs); $('#f2dE').addEventListener('input', f2dFromInputs);
+  function fillPresets(sel, list) { sel.innerHTML = ''; list.forEach(([name, v], i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = name; sel.appendChild(o); }); }
+  fillPresets($('#f2dPreset'), F2D_PRESETS);
+  function applyF2dPreset(i) {
+    const v = F2D_PRESETS[i][1];
+    if (v === 'unnorm') {
+      const r = encode('0.75'); const M = r.M, E = r.E;
+      const Ev = FP.twos(E) + 2;
+      if (FP.inRange(Ev, G.e)) { S1.M = '00' + M.slice(0, G.m - 2); S1.E = FP.toBits(Ev, G.e); } else { S1.M = M; S1.E = E; }
+    } else { const r = encode(v); if (r) { S1.M = r.M; S1.E = r.E; } else { $('#f2dMsg').textContent = `${v} does not fit in this format; showing the previous number.`; } }
+    f2dLoad();
+  }
+  $('#f2dPreset').addEventListener('change', ev => { $('#f2dMsg').textContent = ''; applyF2dPreset(+ev.target.value); });
+
+  /* ---------- Tab: denary → binary ---------- */
+  WT.d2f = makeWalkthrough($('#wt-d2f'));
+  const D2F_PRESETS = [['5.5', '5.5'], ['0.625', '0.625'], ['−0.625', '-0.625'], ['12.25', '12.25'], ['−0.5 (renormalise trap)', '-0.5'], ['−6', '-6'], ['0.1 (does not terminate)', '0.1'], ['0.0390625 (small)', '0.0390625'], ['100', '100'], ['0', '0']];
+  fillPresets($('#d2fPreset'), D2F_PRESETS);
+  $('#d2fPreset').addEventListener('change', ev => { $('#d2fX').value = D2F_PRESETS[+ev.target.value][1]; d2fLoad(); });
+  function d2fLoad() {
+    const r = stepsDenaryToFloat($('#d2fX').value, G.m, G.e);
+    if (r.error && !r.steps) { $('#d2fMsg').textContent = r.error; $('#d2fStrip').innerHTML = ''; WT.d2f.load([]); return; }
+    $('#d2fMsg').textContent = '';
+    if (r.M) renderStrip($('#d2fStrip'), r.M, r.E); else $('#d2fStrip').innerHTML = '';
+    WT.d2f.load(r.steps, `Step through turning ${esc(FP.parseDec($('#d2fX').value).str)} into a ${G.m}-bit mantissa and ${G.e}-bit exponent.`);
+  }
+  $('#d2fX').addEventListener('input', d2fLoad);
+
+  /* ---------- Tab: normalise ---------- */
+  WT.norm = makeWalkthrough($('#wt-norm'), { onStep: st => stripHighlight($('#normStrip'), st && st.strip) });
+  const NORM_PRESETS = [['Positive, two shifts', 'p2'], ['Negative, two shifts', 'n2'], ['Positive, one shift', 'p1'], ['Negative, three shifts', 'n3'], ['Already normalised', 'ok'], ['Cannot normalise (exponent at minimum)', 'min'], ['Zero', 'zero']];
+  fillPresets($('#normPreset'), NORM_PRESETS);
+  function unnorm(M, E, s) { const Ev = FP.twos(E) + s; if (!FP.inRange(Ev, G.e)) return { M, E }; return { M: M[0].repeat(s) + M.slice(0, G.m - s), E: FP.toBits(Ev, G.e) }; }
+  function applyNormPreset(i) {
+    const k = NORM_PRESETS[i][1]; let r;
+    if (k === 'p2') r = unnorm(encode('0.75').M, encode('0.75').E, 2);
+    else if (k === 'n2') r = unnorm(encode('-0.75').M, encode('-0.75').E, 2);
+    else if (k === 'p1') r = unnorm(encode('2.5').M, encode('2.5').E, 1);
+    else if (k === 'n3') r = unnorm(encode('-1.5').M, encode('-1.5').E, 3);
+    else if (k === 'ok') r = encode('-2.5');
+    else if (k === 'min') r = { M: '001' + '0'.repeat(G.m - 3), E: '1' + '0'.repeat(G.e - 1) };
+    else r = { M: '0'.repeat(G.m), E: '0101'.slice(0, G.e).padEnd(G.e, '0') };
+    $('#normM').value = r.M; $('#normE').value = r.E; normLoad();
+  }
+  $('#normPreset').addEventListener('change', ev => applyNormPreset(+ev.target.value));
+  function normLoad() {
+    const M = $('#normM').value.replace(/[\s.]/g, ''), E = $('#normE').value.replace(/[\s.]/g, '');
+    if (!FP.validBits(M, G.m) || !FP.validBits(E, G.e)) { $('#normMsg').textContent = `Enter exactly ${G.m} mantissa bits and ${G.e} exponent bits.`; return; }
+    $('#normMsg').textContent = '';
+    renderStrip($('#normStrip'), M, E);
+    WT.norm.load(stepsNormalise(M, E).steps, 'Step through normalising the number on the left.');
+  }
+  $('#normM').addEventListener('input', normLoad); $('#normE').addEventListener('input', normLoad);
+
+  /* ---------- Tab: add and subtract ---------- */
+  WT.add = makeWalkthrough($('#wt-add'));
+  const ADD_PRESETS = [['5 + 3', '5', '3', '+'], ['5 − 3', '5', '3', '-'], ['0.75 + 0.375', '0.75', '0.375', '+'], ['−2.5 + 1.25', '-2.5', '1.25', '+'], ['6 − 2.5', '6', '2.5', '-'], ['1 − 1 (zero result)', '1', '1', '-'], ['2.5 + 2.5 (negative result?)', '-2.5', '-2.5', '+'], ['12 + 0.25 (precision lost)', '12', '0.25', '+']];
+  fillPresets($('#addPreset'), ADD_PRESETS);
+  $('#addPreset').addEventListener('change', ev => { const p = ADD_PRESETS[+ev.target.value]; $('#addA').value = p[1]; $('#addB').value = p[2]; $('#addOp').value = p[3]; addLoad(); });
+  function addLoad() {
+    const ra = stepsDenaryToFloat($('#addA').value, G.m, G.e), rb = stepsDenaryToFloat($('#addB').value, G.m, G.e);
+    const bad = [];
+    if (!ra.M) bad.push('A'); if (!rb.M) bad.push('B');
+    if (bad.length) { $('#addMsg').textContent = `${bad.join(' and ')} cannot be represented in this format. Enter a denary number that fits.`; WT.add.load([]); return; }
+    $('#addMsg').textContent = (ra.exact === false || rb.exact === false) ? 'Note: at least one input is stored truncated, so the stored values are shown on the strips.' : '';
+    renderStrip($('#addStripA'), ra.M, ra.E); renderStrip($('#addStripB'), rb.M, rb.E);
+    const op = $('#addOp').value;
+    WT.add.load(stepsAdd(ra.M, ra.E, rb.M, rb.E, op).steps, `Step through A ${op === '-' ? '−' : '+'} B in binary.`);
+  }
+  ['#addA', '#addB'].forEach(s => $(s).addEventListener('input', addLoad)); $('#addOp').addEventListener('change', addLoad);
+
+  /* ---------- Tab: range ---------- */
+  function renderRange() {
+    const m = G.m, e = G.e;
+    $('#rangeHead').textContent = `Range and precision with ${m} mantissa bits and ${e} exponent bits`;
+    const ex = extremes(m, e);
+    $('#extremes').innerHTML = `<thead><tr><th>Value</th><th>How</th><th>Mantissa</th><th>Exponent</th><th>Denary</th></tr></thead><tbody>${ex.map(x => `<tr><td><b>${x.name}</b></td><td>${x.how}</td><td>${bitsHTML(dot(x.M), { sign: true, col: 'mant' })}</td><td>${bitsHTML(x.E, { sign: true, col: 'exp' })}</td><td class="v">${x.dec.replace('-', '−')}</td></tr>`).join('')}
+      <tr><td><b>Precision</b></td><td>gap between neighbouring values when the exponent is 0: the last mantissa bit, 2<sup>−${m - 1}</sup></td><td>${bitsHTML(dot('0'.repeat(m - 1) + '1'), { sign: true, col: 'mant' })}</td><td>${bitsHTML('0'.repeat(e), { sign: true, col: 'exp' })}</td><td class="v">${FP.dec(1n, -(m - 1))}</td></tr></tbody>`;
+    const total = m + e; let rows = '';
+    for (let mm = 3; mm <= total - 2; mm++) {
+      const ee = total - mm; if (ee < 2 || ee > 12) continue;
+      const x = extremes(mm, ee);
+      rows += `<tr class="${mm === m ? 'cur' : ''}"><td>${mm} + ${ee}</td><td class="v">${x[0].dec}</td><td class="v">${x[1].dec}</td><td class="v">${FP.dec(1n, -(mm - 1))}</td><td>${mm - 1} bits after the point</td></tr>`;
+    }
+    $('#splits').innerHTML = `<thead><tr><th>Mantissa + exponent (${total} bits)</th><th>Largest positive</th><th>Smallest positive</th><th>Precision at exponent 0</th><th>Significant bits</th></tr></thead><tbody>${rows}</tbody>`;
+  }
+
+  /* ---------- Tab: practice ---------- */
+  const P = { q: null, score: [0, 0] };
+  const rnd = n => Math.floor(Math.random() * n);
+  const randBits = n => Array.from({ length: n }, () => (Math.random() < 0.5 ? '0' : '1')).join('');
+  const randNormM = m => (Math.random() < 0.5 ? '01' : '10') + randBits(m - 2);
+  const randE = (e, lo, hi) => { lo = Math.max(lo, FP.min(e)); hi = Math.min(hi, FP.max(e)); return FP.toBits(lo + rnd(hi - lo + 1), e); };
+  const fmt = (M, E) => `mantissa <b class="mono">${M}</b>, exponent <b class="mono">${E}</b>`;
+  const intro = (m, e) => `A floating point number uses a ${m}-bit mantissa and a ${e}-bit exponent, both in two's complement.`;
+  const QT = {
+    f2d(m, e) { const M = randNormM(m), E = randE(e, -3, 4); return { prompt: `${intro(m, e)} Convert ${fmt(M, E)} to denary.`, fields: [{ id: 'ans', label: 'Denary value', kind: 'num', a: FP.valDec(M, E) }], working: { tab: 'f2d', M, E } }; },
+    d2f(m, e) { const M = randNormM(m), E = randE(e, -3, 4); const v = FP.valDec(M, E); return { prompt: `${intro(m, e)} Represent <b>${v.replace('-', '−')}</b> in this format, normalised.`, fields: [{ id: 'M', label: 'Mantissa', kind: 'bits', a: M }, { id: 'E', label: 'Exponent', kind: 'bits', a: E }], working: { tab: 'd2f', x: v } }; },
+    norm(m, e) {
+      const s = 1 + rnd(Math.min(3, m - 2)); const M = randNormM(m - s) + '0'.repeat(s); const E = randE(e, -3, FP.max(e) - s);
+      const Mu = M[0].repeat(s) + M.slice(0, m - s), Eu = FP.toBits(FP.twos(E) + s, e);
+      return { prompt: `${intro(m, e)} Normalise ${fmt(Mu, Eu)}.`, fields: [{ id: 'M', label: 'Mantissa', kind: 'bits', a: M }, { id: 'E', label: 'Exponent', kind: 'bits', a: E }], working: { tab: 'norm', M: Mu, E: Eu } };
+    },
+    add(m, e) {
+      for (let t = 0; t < 80; t++) {
+        const op = Math.random() < 0.5 ? '+' : '-';
+        const MA = randNormM(m - 2) + '00', MB = randNormM(m - 2) + '00';
+        const EA = randE(e, -1, 3), EB = FP.toBits(FP.twos(EA) + rnd(3) - 1, e);
+        if (!FP.inRange(FP.twos(EB), e)) continue;
+        const r = stepsAdd(MA, EA, MB, EB, op);
+        if (!r.M || !r.E || !r.exact) continue;
+        return { prompt: `${intro(m, e)} A is ${fmt(MA, EA)} and B is ${fmt(MB, EB)}. Calculate <b>A ${op === '-' ? '−' : '+'} B</b>, giving the normalised result.`, fields: [{ id: 'M', label: 'Result mantissa', kind: 'bits', a: r.M }, { id: 'E', label: 'Result exponent', kind: 'bits', a: r.E }], working: { tab: 'add', a: FP.valDec(MA, EA), b: FP.valDec(MB, EB), op } };
+      }
+      return QT.f2d(m, e);
+    },
+    range(m, e) { const ex = extremes(m, e), k = rnd(4), x = ex[k]; return { prompt: `${intro(m, e)} What is the <b>${x.name.toLowerCase()}</b> value it can hold? Give the answer in denary.`, fields: [{ id: 'ans', label: 'Denary value', kind: 'num', a: x.dec }], working: { tab: 'range' } }; }
+  };
+  function newQuestion() {
+    let t = $('#qType').value; if (t === 'mix') t = ['f2d', 'd2f', 'norm', 'add', 'range'][rnd(5)];
+    P.q = QT[t](G.m, G.e); P.q.done = false;
+    $('#qPrompt').innerHTML = P.q.prompt;
+    $('#qFields').innerHTML = P.q.fields.map(f => `<label>${f.label}<input type="text" id="q_${f.id}" autocomplete="off" spellcheck="false" inputmode="${f.kind === 'bits' ? 'numeric' : 'decimal'}"></label>`).join('');
+    $('#qForm').hidden = false; $('#qFb').textContent = ''; $('#qFb').className = 'fb';
+    const first = $('#qFields input'); if (first) first.focus({ preventScroll: true });
+  }
+  $('#newQ').addEventListener('click', newQuestion);
+  $('#qForm').addEventListener('submit', ev => {
+    ev.preventDefault(); if (!P.q) return;
+    const wrong = [];
+    P.q.fields.forEach(f => {
+      const g = $('#q_' + f.id).value.trim();
+      let ok;
+      if (f.kind === 'bits') ok = g.replace(/[\s.]/g, '') === f.a;
+      else { const n = FP.parseNum(g); ok = n !== null && Math.abs(n - Number(f.a)) <= 1e-9 * Math.max(1, Math.abs(Number(f.a))); }
+      if (!ok) wrong.push(f);
+    });
+    if (!P.q.done) { P.score[1]++; if (!wrong.length) P.score[0]++; P.q.done = true; $('#pScore').textContent = `Score: ${P.score[0]} / ${P.score[1]}`; }
+    if (!wrong.length) { $('#qFb').textContent = 'Correct.'; $('#qFb').className = 'fb ok'; }
+    else { $('#qFb').innerHTML = `Not quite. ${wrong.map(f => `${f.label}: <b class="mono">${esc(f.a).replace('-', '−')}</b>`).join('; ')}. Press Show working to see how.`; $('#qFb').className = 'fb bad'; }
+  });
+  $('#qShow').addEventListener('click', () => {
+    if (!P.q) return; const w = P.q.working;
+    if (!P.q.done) { P.score[1]++; P.q.done = true; $('#pScore').textContent = `Score: ${P.score[0]} / ${P.score[1]}`; }
+    if (w.tab === 'f2d') { S1.M = w.M; S1.E = w.E; f2dLoad(); WT.f2d.finishAll(); }
+    if (w.tab === 'd2f') { $('#d2fX').value = w.x; d2fLoad(); WT.d2f.finishAll(); }
+    if (w.tab === 'norm') { $('#normM').value = w.M; $('#normE').value = w.E; normLoad(); WT.norm.finishAll(); }
+    if (w.tab === 'add') { $('#addA').value = w.a; $('#addB').value = w.b; $('#addOp').value = w.op; addLoad(); WT.add.finishAll(); }
+    showTab(w.tab); window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* ---------- Sizes ---------- */
+  function applySizes() {
+    G.m = +$('#mBits').value; G.e = +$('#eBits').value;
+    $('#f2dMsg').textContent = ''; applyF2dPreset(+$('#f2dPreset').value);
+    d2fLoad();
+    applyNormPreset(+$('#normPreset').value);
+    addLoad();
+    if (curTab === 'range') renderRange();
+    if (P.q) { $('#qPrompt').innerHTML = 'Bit widths changed. Press <b>New question</b> for a fresh one.'; $('#qForm').hidden = true; P.q = null; }
+  }
+  $('#mBits').addEventListener('change', applySizes); $('#eBits').addEventListener('change', applySizes);
+
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'ArrowRight' || ev.altKey || ev.metaKey || ev.ctrlKey) return;
+    const tag = (ev.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+    const w = WT[curTab]; if (w) { ev.preventDefault(); w.next(); }
+  });
+
+  applySizes();
+  renderScore();
+})();
+</script>
+
+</body></html>

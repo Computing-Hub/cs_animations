@@ -1,0 +1,1428 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Little Man FDE Cycle</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: a schematic sheet. Program listing on the left; CPU, buses and memory as one live diagram on the right; narration of each micro-step underneath. */
+:root {
+  --paper: #eef2f7;
+  --grid: #dde4ee;
+  --surface: #ffffff;
+  --unit: #f3f6fa;
+  --ink: #14213a;
+  --ink-soft: #56637a;
+  --line: #a6b2c4;
+  --fetch: #2459c4;
+  --decode: #b26f06;
+  --execute: #c2365b;
+  --addr: #6a4bd0;
+  --data: #0b8587;
+  --ctrl: #67718a;
+  --on-accent: #ffffff;
+  --skin: #f0c3a0;
+  --shirt: #e2572b;
+  --cap: #14213a;
+  --ok: #1b7f47;
+  --bad: #c0392b;
+  --stage: var(--ink-soft);
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+    --fetch: #6f9bff; --decode: #f0a832; --execute: #ff6f91; --addr: #a68dff; --data: #33c3c1; --ctrl: #8d97ab; --on-accent: #0e1525;
+    --skin: #e8b791; --shirt: #ff7b4b; --cap: #cdd6e8; --ok: #49c682; --bad: #ff6b5e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+  --fetch: #6f9bff; --decode: #f0a832; --execute: #ff6f91; --addr: #a68dff; --data: #33c3c1; --ctrl: #8d97ab; --on-accent: #0e1525;
+  --skin: #e8b791; --shirt: #ff7b4b; --cap: #cdd6e8; --ok: #49c682; --bad: #ff6b5e;
+  color-scheme: dark;
+}
+body[data-stage="F"] { --stage: var(--fetch); }
+body[data-stage="D"] { --stage: var(--decode); }
+body[data-stage="E"] { --stage: var(--execute); }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1440px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(1.7rem, 3.2vw, 2.5rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; font-weight: 700; }
+h3 { font-size: 1rem; font-weight: 700; }
+.mono { font-family: var(--font-mono); }
+
+/* Header + stage strip */
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.top p { margin: 4px 0 0; color: var(--ink-soft); max-width: 62ch; }
+.stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stages li {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px;
+  transition: border-color .25s, background-color .25s;
+}
+.stage-letter {
+  flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  font: 800 1.25rem var(--font-display); color: var(--on-accent);
+}
+.stages li[data-stage="F"] .stage-letter { background: var(--fetch); }
+.stages li[data-stage="D"] .stage-letter { background: var(--decode); }
+.stages li[data-stage="E"] .stage-letter { background: var(--execute); }
+.stages strong { display: block; font-family: var(--font-display); font-size: 1.05rem; }
+.stages span.desc { display: block; font-size: .88rem; color: var(--ink-soft); line-height: 1.35; }
+.stages li.active { border-color: var(--stage); background: color-mix(in srgb, var(--stage) 9%, var(--surface)); }
+.stages li.active strong::after { content: " · now"; color: var(--stage); font-size: .85rem; }
+
+/* Main grid */
+.layout { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); grid-template-areas: "prog sim"; gap: 16px; align-items: start; }
+.program { grid-area: prog; }
+.sim { grid-area: sim; }
+@media (max-width: 1080px) {
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sim" "prog"; }
+  .stages { grid-template-columns: minmax(0, 1fr); }
+}
+.panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+label.small, .hint { font-size: .85rem; color: var(--ink-soft); }
+
+textarea, select, input[type="text"] {
+  font: 13px/1.55 var(--font-mono); color: var(--ink); background: var(--unit);
+  border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%;
+}
+select { width: auto; font-family: var(--font-body); font-size: .9rem; }
+textarea { min-height: 230px; resize: vertical; tab-size: 8; white-space: pre; overflow-x: auto; }
+textarea:focus, select:focus, input:focus, button:focus-visible, .clickable:focus-visible { outline: 3px solid color-mix(in srgb, var(--fetch) 55%, transparent); outline-offset: 2px; }
+
+.btn {
+  font: 700 .92rem var(--font-body); color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--ink); border-radius: 8px; padding: 8px 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--unit); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 85%, var(--paper)); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn kbd { font: 600 .72rem var(--font-mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .7; }
+
+.msg { font-size: .88rem; margin: 0; }
+.msg.err { color: var(--bad); white-space: pre-line; }
+.msg.ok { color: var(--ok); }
+
+/* Listing */
+.listing-wrap { overflow-x: auto; border: 1.5px solid var(--line); border-radius: 8px; max-height: 340px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font: 12.5px var(--font-mono); font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 6px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--unit); font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+tr.cur td { background: color-mix(in srgb, var(--stage) 14%, var(--surface)); }
+tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--stage); }
+.c-op { color: var(--decode); font-weight: 700; }
+.c-opd { color: var(--addr); font-weight: 700; }
+.tag-data { font: 700 .66rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; color: var(--data); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .84rem; color: var(--ink-soft); }
+.legend b { font-family: var(--font-mono); }
+
+details.isa summary { cursor: pointer; font: 700 .95rem var(--font-display); }
+details.isa table { margin-top: 8px; }
+details.isa td:last-child { white-space: normal; font-family: var(--font-body); font-size: .85rem; }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.controls .spacer { flex: 1 1 auto; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--fetch); }
+
+/* Diagram */
+.diagram-wrap { overflow-x: auto; border: 1.5px solid var(--line); border-radius: 10px; background: var(--paper); }
+#cpu { display: block; width: 100%; min-width: 760px; height: auto; }
+#cpu text { user-select: none; }
+.cpu-box { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.cu-box { fill: var(--unit); stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 7 5; }
+.box-title { font: 800 17px var(--font-display); fill: var(--ink); }
+.unit-title { font: 700 14px var(--font-display); fill: var(--ink-soft); }
+.reg-box { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; transition: stroke .2s; }
+.reg-name { font: 800 15px var(--font-display); fill: var(--ink); }
+.reg-full { font: 10.5px var(--font-body); fill: var(--ink-soft); }
+.reg-val { font: 700 25px var(--font-mono); fill: var(--ink); }
+.sub-label { font: 700 9.5px var(--font-body); letter-spacing: .08em; text-transform: uppercase; fill: var(--ink-soft); }
+.sub-val { font: 700 24px var(--font-mono); fill: var(--ink); }
+.instr-box { fill: var(--surface); stroke: var(--line); stroke-width: 1.4; }
+.op-box { fill: color-mix(in srgb, var(--decode) 12%, var(--surface)); stroke: var(--decode); stroke-width: 1.6; }
+.operand-box { fill: color-mix(in srgb, var(--addr) 12%, var(--surface)); stroke: var(--addr); stroke-width: 1.6; }
+.op-box + .sub-label, .op-label { fill: var(--decode); }
+.operand-label { fill: var(--addr); }
+.dec-sub { font: 10.5px var(--font-body); fill: var(--ink-soft); }
+.alu-shape { fill: var(--unit); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; transition: stroke .2s; }
+.alu-name { font: 800 22px var(--font-display); fill: var(--ink); }
+.alu-op { font: 700 14px var(--font-mono); fill: var(--execute); }
+.wire { fill: none; stroke: var(--line); stroke-width: 2; stroke-dasharray: 3 4; }
+.bus-line { fill: none; stroke-width: 9; stroke-linecap: round; opacity: .32; transition: opacity .2s; }
+.bus-addr .bus-line { stroke: var(--addr); }
+.bus-data .bus-line { stroke: var(--data); }
+.bus-ctrl .bus-line { stroke: var(--ctrl); stroke-width: 3.5; stroke-dasharray: 7 6; opacity: .6; }
+.bus.active .bus-line { opacity: 1; }
+.bus-label { font: 700 12px var(--font-body); fill: var(--ink-soft); }
+.bus-addr .bus-label { fill: var(--addr); }
+.bus-data .bus-label { fill: var(--data); }
+.arrA { fill: var(--addr); } .arrD { fill: var(--data); } .arrC { fill: var(--ctrl); }
+.mem-box { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.cell rect { fill: var(--unit); stroke: var(--grid); stroke-width: 1; transition: fill .2s; }
+.cell-addr { font: 9px var(--font-mono); fill: var(--ink-soft); }
+.cell-val { font: 700 13px var(--font-mono); fill: var(--ink); }
+.cell.empty .cell-val { fill: var(--line); font-weight: 400; }
+.cell.prog rect { fill: var(--surface); stroke: var(--line); }
+.cell.cur rect { stroke: var(--stage); stroke-width: 2.6; }
+.cell.sel rect { fill: color-mix(in srgb, var(--addr) 24%, var(--surface)); stroke: var(--addr); stroke-width: 2.6; }
+.io-box { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.io-val { font: 700 22px var(--font-mono); fill: var(--ink); }
+.cyc-val { font: 800 30px var(--font-display); fill: var(--ink); }
+.hot .reg-box, .hot .alu-shape, .hot .io-box, .hot .mem-box, .hot .cu-box { stroke: var(--stage); stroke-width: 3.2; }
+.hot .cu-box { stroke-dasharray: none; }
+.clickable { cursor: pointer; }
+.clickable:hover .reg-box, .clickable:hover .alu-shape, .clickable:hover .io-box { stroke-width: 2.6; }
+.flash { animation: flash 1s ease-out; }
+@keyframes flash { 0% { fill: color-mix(in srgb, var(--stage) 45%, var(--surface)); } 100% { fill: var(--surface); } }
+.cell.flash rect { animation: flash 1s ease-out; }
+
+.packet rect { fill: var(--data); }
+.packet.addr rect { fill: var(--addr); }
+.packet.ctrl rect { fill: var(--ctrl); }
+.packet.alu rect { fill: var(--execute); }
+.packet.dec rect { fill: var(--decode); }
+.packet text { fill: var(--on-accent); font: 700 13px var(--font-mono); }
+.float-txt { font: 800 18px var(--font-display); fill: var(--stage); }
+
+/* Little Man */
+.man-skin { fill: var(--skin); stroke: var(--ink); stroke-width: 1.4; }
+.man-shirt { fill: var(--shirt); stroke: var(--ink); stroke-width: 1.4; }
+.man-limb { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; fill: none; }
+.man-cap { fill: var(--cap); }
+.man-eye { fill: var(--ink); }
+.envelope rect { fill: var(--surface); stroke: var(--stage); stroke-width: 2.2; }
+.envelope text { font: 700 14px var(--font-mono); fill: var(--ink); }
+.is-hidden { display: none; }
+
+/* Narration */
+.below { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .below { grid-template-columns: minmax(0, 1fr); } }
+.narration { display: grid; gap: 8px; align-content: start; }
+.narr-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stage-tag {
+  font: 800 .78rem var(--font-body); letter-spacing: .1em; text-transform: uppercase;
+  background: var(--stage); color: var(--on-accent); padding: 3px 10px; border-radius: 999px;
+}
+.step-count { font-size: .85rem; color: var(--ink-soft); }
+#stepTitle { font-size: 1.35rem; }
+.rtl {
+  font: 600 .95rem var(--font-mono); background: var(--unit); border: 1.5px dashed var(--line);
+  border-radius: 8px; padding: 6px 10px; justify-self: start; max-width: 100%; overflow-x: auto; white-space: nowrap;
+}
+.rtl::before { content: "RTL  "; font-family: var(--font-body); font-size: .7rem; letter-spacing: .1em; color: var(--ink-soft); }
+#stepText { margin: 0; max-width: 68ch; }
+.ask { display: grid; gap: 8px; background: color-mix(in srgb, var(--stage) 8%, var(--surface)); border: 1.5px solid var(--stage); border-radius: 10px; padding: 12px; }
+.ask form { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask input { flex: 1 1 120px; width: auto; font-size: 1rem; }
+.ask p { margin: 0; font-weight: 700; }
+.fb { font-size: .9rem; min-height: 1.3em; }
+.fb.ok { color: var(--ok); } .fb.bad { color: var(--bad); }
+.side { display: grid; gap: 12px; align-content: start; }
+.side h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-family: var(--font-body); }
+.out-list { font: 700 1.1rem var(--font-mono); min-height: 1.6em; display: flex; flex-wrap: wrap; gap: 6px; }
+.out-list span { background: var(--unit); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; }
+.out-list:empty::before { content: "Nothing output yet"; font: .9rem var(--font-body); color: var(--ink-soft); }
+.info { background: var(--unit); border-radius: 10px; padding: 12px; }
+.info strong { font-family: var(--font-display); display: block; margin-bottom: 2px; }
+.info p { margin: 0; font-size: .92rem; }
+.score { font-size: .95rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flash, .cell.flash rect { animation: none; }
+  .stages li, .reg-box { transition: none; }
+}
+</style>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>The Little Man Computer</h1>
+      <p>Load an assembly program, then step through the Fetch, Decode, Execute cycle. Follow the Little Man as he moves values between the registers, the ALU and memory along the address and data buses.</p>
+    </div>
+  </header>
+
+  <ol class="stages" id="stages" aria-label="Stages of the cycle">
+    <li data-stage="F"><span class="stage-letter" aria-hidden="true">F</span><div><strong>Fetch</strong><span class="desc">Copy the next instruction from memory into the CPU, using the PC, MAR, MDR and both buses.</span></div></li>
+    <li data-stage="D"><span class="stage-letter" aria-hidden="true">D</span><div><strong>Decode</strong><span class="desc">Split the instruction in the CIR into its opcode and operand and work out what it means.</span></div></li>
+    <li data-stage="E"><span class="stage-letter" aria-hidden="true">E</span><div><strong>Execute</strong><span class="desc">Carry out the instruction using the registers, the ALU and memory. Then the cycle repeats.</span></div></li>
+  </ol>
+
+  <main class="layout">
+    <section class="panel program" aria-labelledby="progHead">
+      <div class="panel-head">
+        <h2 id="progHead">Assembly program</h2>
+        <select id="example" aria-label="Example programs"></select>
+      </div>
+      <textarea id="code" wrap="off" spellcheck="false" aria-label="Assembly code"></textarea>
+      <div class="controls">
+        <button class="btn primary" id="loadBtn" type="button">Load into memory</button>
+        <span class="hint">Use <span class="mono">//</span> for comments</span>
+      </div>
+      <p class="msg" id="asmMsg" role="status"></p>
+      <h3>Assembled into memory</h3>
+      <div class="legend">
+        <span>Machine code <b class="c-op">5</b><b class="c-opd">07</b></span>
+        <span><b class="c-op">opcode</b> = what to do</span>
+        <span><b class="c-opd">operand</b> = which address</span>
+      </div>
+      <div class="listing-wrap">
+        <table id="listing">
+          <thead><tr><th>Addr</th><th>Label</th><th>Instruction</th><th>Opcode</th><th>Operand</th><th>Code</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <details class="isa">
+        <summary>Instruction set</summary>
+        <div class="listing-wrap">
+          <table>
+            <thead><tr><th>Code</th><th>Mnemonic</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><span class="c-op">1</span><span class="c-opd">xx</span></td><td>ADD</td><td>ACC ← ACC + value at address xx</td></tr>
+              <tr><td><span class="c-op">2</span><span class="c-opd">xx</span></td><td>SUB</td><td>ACC ← ACC − value at address xx</td></tr>
+              <tr><td><span class="c-op">3</span><span class="c-opd">xx</span></td><td>STA</td><td>Store ACC in memory at address xx</td></tr>
+              <tr><td><span class="c-op">5</span><span class="c-opd">xx</span></td><td>LDA</td><td>Load the value at address xx into ACC</td></tr>
+              <tr><td><span class="c-op">6</span><span class="c-opd">xx</span></td><td>BRA</td><td>Branch always: PC ← xx</td></tr>
+              <tr><td><span class="c-op">7</span><span class="c-opd">xx</span></td><td>BRZ</td><td>Branch if ACC is zero</td></tr>
+              <tr><td><span class="c-op">8</span><span class="c-opd">xx</span></td><td>BRP</td><td>Branch if ACC is zero or positive</td></tr>
+              <tr><td><span class="c-op">9</span><span class="c-opd">01</span></td><td>INP</td><td>Input a number into ACC</td></tr>
+              <tr><td><span class="c-op">9</span><span class="c-opd">02</span></td><td>OUT</td><td>Output the value in ACC</td></tr>
+              <tr><td><span class="c-op">0</span><span class="c-opd">00</span></td><td>HLT</td><td>Stop the program</td></tr>
+              <tr><td>—</td><td>DAT</td><td>Not an instruction: reserves a memory location for data</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel sim" aria-label="Simulator">
+      <div class="controls">
+        <button class="btn primary" id="stepBtn" type="button">Next step <kbd>→</kbd></button>
+        <button class="btn" id="stageBtn" type="button">Finish stage</button>
+        <button class="btn" id="instrBtn" type="button">Finish instruction</button>
+        <button class="btn" id="runBtn" type="button">Run</button>
+        <button class="btn" id="resetBtn" type="button">Reset</button>
+        <span class="spacer"></span>
+        <label class="small" for="speed">Speed</label>
+        <select id="speed">
+          <option value="0.5">Slow</option>
+          <option value="1" selected>Normal</option>
+          <option value="2">Fast</option>
+          <option value="5">Turbo</option>
+        </select>
+        <label class="toggle"><input type="checkbox" id="quizOn"> Quiz me</label>
+      </div>
+
+      <div class="diagram-wrap">
+        <svg id="cpu" viewBox="0 0 1200 720" role="img" aria-label="Diagram of the CPU, its registers, the ALU, the address, data and control buses, and main memory">
+          <defs>
+            <marker id="arrA" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrA"/></marker>
+            <marker id="arrD" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrD"/></marker>
+            <marker id="arrC" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrC"/></marker>
+          </defs>
+
+          <!-- Control bus -->
+          <g class="bus bus-ctrl clickable" id="busCtrl" data-info="cbus" tabindex="0">
+            <path class="bus-line" d="M330,115 V44 H1100 V66" marker-end="url(#arrC)"/>
+            <text class="bus-label" x="715" y="34" text-anchor="middle">Control bus · READ and WRITE signals</text>
+          </g>
+
+          <!-- CPU -->
+          <rect class="cpu-box" x="20" y="70" width="700" height="520" rx="18"/>
+          <text class="box-title" x="40" y="99">CPU (processor)</text>
+
+          <g id="cuG" class="clickable" data-info="cu" tabindex="0">
+            <rect class="cu-box" x="40" y="112" width="380" height="270" rx="12"/>
+            <text class="unit-title" x="56" y="137">Control unit</text>
+          </g>
+
+          <!-- Internal wires -->
+          <path class="wire" d="M250,470 H360 V395 H445 V415"/>
+          <path class="wire" d="M565,362 V395 H605 V415"/>
+          <path class="wire" d="M525,560 V578 H165 V520"/>
+
+          <g id="pcG" class="clickable" data-info="pc" tabindex="0">
+            <rect id="pcBox" class="reg-box" x="60" y="156" width="130" height="72" rx="8"/>
+            <text class="reg-name" x="72" y="175">PC</text>
+            <text class="reg-full" x="72" y="189">Program Counter</text>
+            <text id="pcVal" class="reg-val" x="125" y="219" text-anchor="middle">00</text>
+          </g>
+
+          <g id="decG" class="clickable" data-info="dec" tabindex="0">
+            <rect id="decBox" class="reg-box" x="270" y="156" width="130" height="72" rx="8"/>
+            <text class="reg-name" x="282" y="175">Decoder</text>
+            <text id="decVal" class="reg-val" x="335" y="210" text-anchor="middle">—</text>
+            <text id="decSub" class="dec-sub" x="335" y="223" text-anchor="middle"></text>
+          </g>
+
+          <g id="cirG" class="clickable" data-info="cir" tabindex="0">
+            <rect id="cirBox" class="reg-box" x="60" y="248" width="340" height="120" rx="8"/>
+            <text class="reg-name" x="72" y="267">CIR</text>
+            <text class="reg-full" x="104" y="267">Current Instruction Register</text>
+            <rect class="instr-box" x="72" y="280" width="90" height="74" rx="6"/>
+            <text class="sub-label" x="117" y="296" text-anchor="middle">instruction</text>
+            <text id="cirVal" class="sub-val" x="117" y="333" text-anchor="middle">000</text>
+            <text class="reg-full" x="173" y="324" text-anchor="middle" font-size="16">→</text>
+            <rect class="op-box" x="184" y="280" width="96" height="74" rx="6"/>
+            <text class="sub-label op-label" x="232" y="296" text-anchor="middle">opcode</text>
+            <text id="opVal" class="sub-val" x="232" y="333" text-anchor="middle">?</text>
+            <rect class="operand-box" x="292" y="280" width="96" height="74" rx="6"/>
+            <text class="sub-label operand-label" x="340" y="296" text-anchor="middle">operand</text>
+            <text id="operandVal" class="sub-val" x="340" y="333" text-anchor="middle">??</text>
+          </g>
+
+          <g id="marG" class="clickable" data-info="mar" tabindex="0">
+            <rect id="marBox" class="reg-box" x="480" y="150" width="170" height="72" rx="8"/>
+            <text class="reg-name" x="492" y="169">MAR</text>
+            <text class="reg-full" x="492" y="183">Memory Address Register</text>
+            <text id="marVal" class="reg-val" x="565" y="213" text-anchor="middle">00</text>
+          </g>
+
+          <g id="mdrG" class="clickable" data-info="mdr" tabindex="0">
+            <rect id="mdrBox" class="reg-box" x="480" y="290" width="170" height="72" rx="8"/>
+            <text class="reg-name" x="492" y="309">MDR</text>
+            <text class="reg-full" x="492" y="323">Memory Data Register</text>
+            <text id="mdrVal" class="reg-val" x="565" y="353" text-anchor="middle">000</text>
+          </g>
+
+          <g id="accG" class="clickable" data-info="acc" tabindex="0">
+            <rect id="accBox" class="reg-box" x="80" y="440" width="170" height="80" rx="8"/>
+            <text class="reg-name" x="92" y="459">ACC</text>
+            <text class="reg-full" x="92" y="473">Accumulator</text>
+            <text id="accVal" class="reg-val" x="165" y="507" text-anchor="middle">000</text>
+          </g>
+
+          <g id="aluG" class="clickable" data-info="alu" tabindex="0">
+            <polygon class="alu-shape" points="390,415 500,415 525,450 550,415 660,415 600,560 450,560"/>
+            <text class="alu-name" x="525" y="495" text-anchor="middle">ALU</text>
+            <text class="reg-full" x="525" y="512" text-anchor="middle">Arithmetic Logic Unit</text>
+            <text id="aluOp" class="alu-op" x="525" y="540" text-anchor="middle"></text>
+          </g>
+
+          <!-- Buses to memory -->
+          <g class="bus bus-addr clickable" id="busAddr" data-info="abus" tabindex="0">
+            <path class="bus-line" d="M654,186 H770" marker-end="url(#arrA)"/>
+            <text class="bus-label" x="715" y="160" text-anchor="middle">Address bus</text>
+            <text class="bus-label" x="715" y="212" text-anchor="middle" font-size="10.5">one way →</text>
+          </g>
+          <g class="bus bus-data clickable" id="busData" data-info="dbus" tabindex="0">
+            <path class="bus-line" d="M660,326 H770" marker-start="url(#arrD)" marker-end="url(#arrD)"/>
+            <text class="bus-label" x="715" y="300" text-anchor="middle">Data bus</text>
+            <text class="bus-label" x="715" y="352" text-anchor="middle" font-size="10.5">two way ↔</text>
+          </g>
+
+          <!-- Memory -->
+          <g id="memG" class="clickable" data-info="mem">
+            <rect class="mem-box" x="780" y="66" width="400" height="634" rx="14"/>
+            <text class="box-title" x="798" y="98">Main memory (RAM)</text>
+            <text class="reg-full" x="1162" y="98" text-anchor="end">addresses 00–99</text>
+          </g>
+          <g id="memCells"></g>
+
+          <!-- Input / output -->
+          <g id="inG" class="clickable" data-info="input" tabindex="0">
+            <rect class="io-box" x="20" y="610" width="220" height="92" rx="10"/>
+            <text class="reg-name" x="34" y="632">Input</text>
+            <text class="reg-full" x="34" y="646">keyboard → ACC</text>
+            <text id="inVal" class="io-val" x="130" y="686" text-anchor="middle">—</text>
+          </g>
+          <g id="outG" class="clickable" data-info="output" tabindex="0">
+            <rect class="io-box" x="260" y="610" width="220" height="92" rx="10"/>
+            <text class="reg-name" x="274" y="632">Output</text>
+            <text class="reg-full" x="274" y="646">ACC → screen</text>
+            <text id="outVal" class="io-val" x="370" y="686" text-anchor="middle">—</text>
+          </g>
+          <text class="reg-full" x="640" y="634" text-anchor="middle">Instructions completed</text>
+          <text id="cycVal" class="cyc-val" x="640" y="672" text-anchor="middle">0</text>
+
+          <g id="fxLayer"></g>
+
+          <!-- The Little Man (feet at the origin) -->
+          <g id="man" class="clickable" data-info="man" transform="translate(230,228)">
+            <g id="manBody">
+              <line id="legB" class="man-limb" x1="0" y1="-22" x2="0" y2="0"/>
+              <line id="armB" class="man-limb" x1="0" y1="-42" x2="-8" y2="-26"/>
+              <line id="legF" class="man-limb" x1="0" y1="-22" x2="0" y2="0"/>
+              <rect class="man-shirt" x="-9" y="-46" width="18" height="27" rx="7"/>
+              <line id="armF" class="man-limb" x1="0" y1="-42" x2="8" y2="-26"/>
+              <circle class="man-skin" cx="0" cy="-56" r="10"/>
+              <path class="man-cap" d="M-10.5,-57 A10.5,10.5 0 0 1 10.5,-57 Z"/>
+              <rect class="man-cap" x="4" y="-59" width="12" height="3" rx="1.5"/>
+              <circle class="man-eye" cx="4.5" cy="-54" r="1.5"/>
+            </g>
+            <g id="envelope" class="envelope is-hidden" transform="translate(0,-84)">
+              <rect x="-27" y="-14" width="54" height="26" rx="5"/>
+              <text id="envText" x="0" y="4.5" text-anchor="middle">000</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <div class="below">
+        <div class="narration" aria-live="polite">
+          <div class="narr-top">
+            <span class="stage-tag" id="stageTag">Ready</span>
+            <span class="step-count" id="stepCount"></span>
+          </div>
+          <h3 id="stepTitle">Ready to fetch</h3>
+          <div class="rtl" id="rtl" hidden></div>
+          <p id="stepText"></p>
+
+          <div class="ask" id="quizBox" hidden>
+            <p id="quizQ"></p>
+            <form id="quizForm" autocomplete="off">
+              <input type="text" id="quizIn" aria-label="Your answer">
+              <button class="btn primary" type="submit">Check</button>
+              <button class="btn" type="button" id="quizShow">Show me</button>
+            </form>
+            <div class="fb" id="quizFb" role="status"></div>
+          </div>
+
+          <div class="ask" id="inputBox" hidden>
+            <p>INP: type a whole number from −999 to 999.</p>
+            <form id="inputForm" autocomplete="off">
+              <input type="text" id="inputIn" inputmode="numeric" aria-label="Input value">
+              <button class="btn primary" type="submit">Send to ACC</button>
+            </form>
+            <div class="fb bad" id="inputFb" role="status"></div>
+          </div>
+        </div>
+
+        <div class="side">
+          <div>
+            <h3>Output</h3>
+            <div class="out-list" id="outList"></div>
+          </div>
+          <div class="score" id="scoreBox" hidden><h3>Quiz score</h3><span id="score">0 / 0</span></div>
+          <div class="info" id="info" aria-live="polite">
+            <strong>Explore the diagram</strong>
+            <p>Click any part of the CPU, a bus, a memory location or the Little Man to see what it does.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const val = x => (typeof x === 'function' ? x() : x);
+  const pad = (n, w) => (n < 0 ? '-' + String(-n).padStart(w, '0') : String(n).padStart(w, '0'));
+  const p2 = n => pad(n, 2);
+  const p3 = n => pad(n, 3);
+
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  /* ---------- Example programs ---------- */
+  const EXAMPLES = [
+    { name: 'Add two numbers', code:
+`// Adds two numbers that are stored in memory
+        LDA first    // load the first number into ACC
+        ADD second   // ALU adds the second number
+        STA total    // store the answer in memory
+        OUT          // show the answer
+        HLT          // stop
+first   DAT 5
+second  DAT 3
+total   DAT 0` },
+    { name: 'Add two inputs', code:
+`// Asks for two numbers and outputs their sum
+        INP          // first number into ACC
+        STA num1     // save it in memory
+        INP          // second number into ACC
+        ADD num1     // ACC = second + first
+        OUT
+        HLT
+num1    DAT` },
+    { name: 'Countdown loop', code:
+`// Outputs 3, 2, 1, 0 using a loop
+loop    LDA count
+        OUT
+        SUB one
+        STA count
+        BRP loop     // repeat while count >= 0
+        HLT
+count   DAT 3
+one     DAT 1` },
+    { name: 'Bigger of two', code:
+`// Outputs the larger of two inputs
+        INP
+        STA a
+        INP
+        STA b
+        SUB a        // ACC = b - a
+        BRP showb    // b is bigger
+        LDA a
+        OUT
+        HLT
+showb   LDA b
+        OUT
+        HLT
+a       DAT
+b       DAT` }
+  ];
+
+  /* ---------- Assembler ---------- */
+  const OPS = {
+    HLT: { base: 0, arg: false }, COB: { base: 0, arg: false },
+    ADD: { base: 100, arg: true }, SUB: { base: 200, arg: true },
+    STA: { base: 300, arg: true }, STO: { base: 300, arg: true },
+    LDA: { base: 500, arg: true }, BRA: { base: 600, arg: true },
+    BRZ: { base: 700, arg: true }, BRP: { base: 800, arg: true },
+    INP: { base: 901, arg: false }, OUT: { base: 902, arg: false },
+    DAT: { base: 0, arg: false, data: true }
+  };
+
+  function assemble(src) {
+    const items = [], labels = {}, errors = [];
+    src.split('\n').forEach((raw, i) => {
+      const line = raw.replace(/(\/\/|;|#).*$/, '').trim();
+      if (!line) return;
+      const tok = line.split(/\s+/);
+      let label = null;
+      if (!OPS[tok[0].toUpperCase()]) label = tok.shift();
+      if (!tok.length) { errors.push(`Line ${i + 1}: "${label}" needs an instruction after it.`); return; }
+      const mn = tok[0].toUpperCase();
+      if (!OPS[mn]) { errors.push(`Line ${i + 1}: "${tok[0]}" is not an instruction.`); return; }
+      if (label) {
+        const key = label.toUpperCase();
+        if (!/^[A-Za-z_]\w*$/.test(label)) errors.push(`Line ${i + 1}: label "${label}" must start with a letter.`);
+        else if (key in labels) errors.push(`Line ${i + 1}: label "${label}" is used twice.`);
+        else labels[key] = items.length;
+      }
+      items.push({ line: i + 1, label, mn, arg: tok[1] || null });
+    });
+    if (items.length > 100) errors.push('The program is too long: memory only has 100 locations.');
+    const mem = new Array(100).fill(0);
+    items.forEach((it, a) => {
+      if (a > 99) return;
+      const op = OPS[it.mn];
+      if (op.data) {
+        let v = 0;
+        if (it.arg) {
+          v = Number(it.arg);
+          if (!Number.isInteger(v) || v < -999 || v > 999) errors.push(`Line ${it.line}: DAT value must be a whole number from -999 to 999.`);
+        }
+        mem[a] = Number.isInteger(v) ? v : 0;
+        it.value = mem[a];
+        return;
+      }
+      if (op.arg) {
+        if (!it.arg) { errors.push(`Line ${it.line}: ${it.mn} needs an operand (an address or a label).`); return; }
+        let addr;
+        if (/^\d+$/.test(it.arg)) addr = Number(it.arg);
+        else addr = labels[it.arg.toUpperCase()];
+        if (addr === undefined) { errors.push(`Line ${it.line}: label "${it.arg}" is not defined.`); return; }
+        if (addr > 99) { errors.push(`Line ${it.line}: address ${addr} is outside memory (00–99).`); return; }
+        it.addr = addr;
+        mem[a] = op.base + addr;
+      } else {
+        mem[a] = op.base;
+      }
+    });
+    return { mem, items, errors };
+  }
+
+  /* ---------- Instruction decoding ---------- */
+  const ISA = {
+    1: { mn: 'ADD', desc: 'add the value at the operand address to the accumulator' },
+    2: { mn: 'SUB', desc: 'subtract the value at the operand address from the accumulator' },
+    3: { mn: 'STA', desc: 'store the accumulator in memory at the operand address' },
+    5: { mn: 'LDA', desc: 'load the value at the operand address into the accumulator' },
+    6: { mn: 'BRA', desc: 'branch always: jump to the operand address' },
+    7: { mn: 'BRZ', desc: 'branch to the operand address if the accumulator is zero' },
+    8: { mn: 'BRP', desc: 'branch to the operand address if the accumulator is zero or positive' }
+  };
+  function decodeInstr(code) {
+    const op = Math.floor(Math.abs(code) / 100), operand = Math.abs(code) % 100;
+    let d = null;
+    if (code < 0) d = null;
+    else if (code === 0) d = { mn: 'HLT', desc: 'halt: stop the program' };
+    else if (code === 901) d = { mn: 'INP', desc: 'input a number into the accumulator' };
+    else if (code === 902) d = { mn: 'OUT', desc: 'output the value in the accumulator' };
+    else if (ISA[op]) d = ISA[op];
+    return { op, operand, code, mn: d ? d.mn : '???', desc: d ? d.desc : 'this is not a valid instruction' , valid: !!d };
+  }
+
+  /* ---------- Machine state ---------- */
+  const M = { mem: new Array(100).fill(0), pc: 0, mar: 0, mdr: 0, cir: 0, acc: 0, halted: false, cycles: 0 };
+  let prog = null, queue = [], busy = false, running = false, resetPending = false;
+  let curAddr = 0, aluResult = 0, quizOn = false, score = [0, 0];
+  let stageNo = 0, lastStage = null;
+  const S = { speed: 1, rush: false };
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) { S.speed = 2; $('#speed').value = '2'; }
+
+  /* ---------- Animation helpers ---------- */
+  const dur = ms => (S.rush ? 0 : ms / S.speed);
+  const ease = t => (t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  function tween(ms, fn, linear) {
+    return new Promise(res => {
+      const d = dur(ms);
+      if (d <= 0) { fn(1); res(); return; }
+      const t0 = performance.now();
+      const f = now => {
+        const t = Math.min(1, (now - t0) / d);
+        fn(linear ? t : ease(t));
+        if (t < 1) requestAnimationFrame(f); else res();
+      };
+      requestAnimationFrame(f);
+    });
+  }
+  const sleep = ms => tween(ms, () => {});
+
+  const fx = $('#fxLayer');
+  async function sendPacket(points, label, kind) {
+    const g = el('g', { class: 'packet ' + kind }, fx);
+    const w = 18 + String(label).length * 9;
+    el('rect', { x: -w / 2, y: -13, width: w, height: 26, rx: 13 }, g);
+    el('text', { y: 5, 'text-anchor': 'middle' }, g).textContent = label;
+    const segs = [];
+    let total = 0;
+    for (let i = 1; i < points.length; i++) {
+      const [x1, y1] = points[i - 1], [x2, y2] = points[i];
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      segs.push({ x1, y1, x2, y2, len, start: total });
+      total += len;
+    }
+    const place = t => {
+      const d = t * total;
+      const s = segs.find(s => d <= s.start + s.len) || segs[segs.length - 1];
+      const k = s.len ? (d - s.start) / s.len : 1;
+      g.setAttribute('transform', `translate(${s.x1 + (s.x2 - s.x1) * k},${s.y1 + (s.y2 - s.y1) * k})`);
+    };
+    place(0);
+    await tween(Math.max(450, total * 3.2), place);
+    g.remove();
+  }
+  async function floatText(x, y, text) {
+    const t = el('text', { x, y, class: 'float-txt', 'text-anchor': 'middle' }, fx);
+    t.textContent = text;
+    await tween(800, k => { t.setAttribute('y', y - 22 * k); t.setAttribute('opacity', 1 - k * .8); });
+    t.remove();
+  }
+  async function onBus(id, fn) {
+    $(id).classList.add('active');
+    try { await fn(); } finally { $(id).classList.remove('active'); }
+  }
+  function flash(sel) {
+    const e = typeof sel === 'string' ? $(sel) : sel;
+    e.classList.remove('flash');
+    void e.getBoundingClientRect();
+    e.classList.add('flash');
+  }
+
+  /* ---------- The Little Man ---------- */
+  const SPOT = {
+    pc: [230, 228], mar: [450, 222], mdr: [450, 364], cir: [300, 436], acc: [320, 532],
+    alu: [686, 572], io: [520, 702], mem: [750, 282]
+  };
+  const man = { x: 230, y: 228, facing: 1, carrying: false };
+  const manG = $('#man'), manBody = $('#manBody'), env = $('#envelope'), envText = $('#envText');
+  const legF = $('#legF'), legB = $('#legB'), armF = $('#armF'), armB = $('#armB');
+  function placeMan() { manG.setAttribute('transform', `translate(${man.x},${man.y})`); }
+  function setArms() {
+    if (man.carrying) {
+      armF.setAttribute('x2', 9); armF.setAttribute('y2', -70);
+      armB.setAttribute('x2', -9); armB.setAttribute('y2', -70);
+    } else {
+      armF.setAttribute('x2', 8); armF.setAttribute('y2', -26);
+      armB.setAttribute('x2', -8); armB.setAttribute('y2', -26);
+    }
+  }
+  function setLimbs(a) {
+    legF.setAttribute('transform', `rotate(${a} 0 -22)`);
+    legB.setAttribute('transform', `rotate(${-a} 0 -22)`);
+    if (!man.carrying) {
+      armF.setAttribute('transform', `rotate(${-a * .7} 0 -42)`);
+      armB.setAttribute('transform', `rotate(${a * .7} 0 -42)`);
+    } else {
+      armF.removeAttribute('transform'); armB.removeAttribute('transform');
+    }
+  }
+  async function walkTo(spot) {
+    const [tx, ty] = SPOT[spot];
+    const sx = man.x, sy = man.y;
+    const dist = Math.hypot(tx - sx, ty - sy);
+    if (dist < 1) return;
+    if (tx < sx - 1) man.facing = -1; else if (tx > sx + 1) man.facing = 1;
+    manBody.setAttribute('transform', `scale(${man.facing},1)`);
+    await tween(Math.max(300, dist * 3), t => {
+      man.x = sx + (tx - sx) * t; man.y = sy + (ty - sy) * t;
+      placeMan();
+      if (!reduced) setLimbs(Math.sin(t * dist / 8) * 26);
+    }, true);
+    setLimbs(0);
+  }
+  function pickUp(text) {
+    man.carrying = true; envText.textContent = text;
+    env.classList.remove('is-hidden'); setArms(); setLimbs(0);
+  }
+  function drop() { man.carrying = false; env.classList.add('is-hidden'); setArms(); }
+  async function carry(from, to, text) {
+    await walkTo(from);
+    pickUp(text);
+    await sleep(200);
+    await walkTo(to);
+    drop();
+  }
+
+  /* ---------- Rendering ---------- */
+  const cellsG = $('#memCells');
+  const cells = [];
+  const cellXY = a => [790 + (a % 10) * 38, 116 + Math.floor(a / 10) * 58];
+  const cellC = a => { const [x, y] = cellXY(a); return [x + 19, y + 29]; };
+  for (let a = 0; a < 100; a++) {
+    const [x, y] = cellXY(a);
+    const g = el('g', { class: 'cell clickable', 'data-addr': a, tabindex: '0', role: 'button', 'aria-label': 'Memory address ' + p2(a) }, cellsG);
+    el('rect', { x: x + 1, y: y + 1, width: 36, height: 56, rx: 4 }, g);
+    el('text', { x: x + 5, y: y + 14, class: 'cell-addr' }, g).textContent = p2(a);
+    const v = el('text', { x: x + 19, y: y + 40, class: 'cell-val', 'text-anchor': 'middle' }, g);
+    cells.push({ g, v });
+  }
+  function renderCell(a) {
+    const c = cells[a];
+    c.v.textContent = p3(M.mem[a]);
+    const inProg = prog && a < prog.items.length;
+    c.g.classList.toggle('prog', !!inProg);
+    c.g.classList.toggle('empty', !inProg && M.mem[a] === 0);
+  }
+  function renderMemory() { for (let a = 0; a < 100; a++) renderCell(a); }
+  function selectCell(a) {
+    cells.forEach(c => c.g.classList.remove('sel'));
+    if (a !== null) cells[a].g.classList.add('sel');
+  }
+  function markCurrent(a) {
+    cells.forEach(c => c.g.classList.remove('cur'));
+    if (a !== null && cells[a]) cells[a].g.classList.add('cur');
+    document.querySelectorAll('#listing tbody tr').forEach(tr => tr.classList.toggle('cur', Number(tr.dataset.addr) === a));
+    const row = document.querySelector('#listing tbody tr.cur');
+    if (row) {
+      const wrap = row.closest('.listing-wrap');
+      const top = row.offsetTop - wrap.clientHeight / 2;
+      wrap.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+  }
+  const REG = { pc: ['#pcVal', 2], mar: ['#marVal', 2], mdr: ['#mdrVal', 3], acc: ['#accVal', 3], cir: ['#cirVal', 3] };
+  function show(name) { $(REG[name][0]).textContent = pad(M[name], REG[name][1]); }
+  function showAll() { Object.keys(REG).forEach(show); }
+  function setReg(name, v) { M[name] = v; show(name); flash('#' + name + 'Box'); }
+  function clearDecode() {
+    $('#opVal').textContent = '?'; $('#operandVal').textContent = '??';
+    $('#decVal').textContent = '—'; $('#decSub').textContent = '';
+  }
+  function renderCycles() { $('#cycVal').textContent = M.cycles; }
+
+  function renderListing() {
+    const tb = $('#listing tbody');
+    tb.innerHTML = '';
+    prog.items.forEach((it, a) => {
+      if (a > 99) return;
+      const tr = document.createElement('tr');
+      tr.dataset.addr = a;
+      const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; };
+      td(p2(a));
+      td(it.label || '');
+      const ins = td(it.mn + (it.arg ? ' ' + it.arg : ''));
+      if (it.mn === 'DAT') {
+        const s = document.createElement('span'); s.className = 'tag-data'; s.textContent = ' data'; ins.appendChild(s);
+        td('—'); td('—');
+        td(p3(prog.mem[a])).dataset.code = a;
+      } else {
+        const code = prog.mem[a];
+        td(String(Math.floor(code / 100)), 'c-op');
+        td(p2(code % 100), 'c-opd');
+        const c = td(''); c.dataset.code = a;
+        c.innerHTML = `<span class="c-op">${Math.floor(code / 100)}</span><span class="c-opd">${p2(code % 100)}</span>`;
+      }
+      tb.appendChild(tr);
+    });
+  }
+  function updateListingCode(a) {
+    const c = document.querySelector(`#listing td[data-code="${a}"]`);
+    if (c && prog.items[a] && prog.items[a].mn === 'DAT') c.textContent = p3(M.mem[a]);
+  }
+
+  /* ---------- Narration ---------- */
+  const STAGE_NAME = { F: 'Fetch', D: 'Decode', E: 'Execute' };
+  const HOT_IDS = ['pcG', 'decG', 'cirG', 'marG', 'mdrG', 'accG', 'aluG', 'memG', 'inG', 'outG', 'cuG'];
+  function setHot(list) { HOT_IDS.forEach(id => $('#' + id).classList.toggle('hot', (list || []).includes(id))); }
+  function setStage(stg) {
+    if (stg) document.body.dataset.stage = stg; else delete document.body.dataset.stage;
+    document.querySelectorAll('#stages li').forEach(li => li.classList.toggle('active', li.dataset.stage === stg));
+  }
+  function showStep(st) {
+    if (st.stage !== lastStage) { stageNo = 1; lastStage = st.stage; } else stageNo++;
+    const total = stageNo + queue.filter(s => s.stage === st.stage).length;
+    setStage(st.stage);
+    setHot(st.hot);
+    $('#stageTag').textContent = STAGE_NAME[st.stage];
+    $('#stepCount').textContent = `Step ${stageNo} of ${total}`;
+    $('#stepTitle').textContent = val(st.title);
+    $('#rtl').textContent = val(st.rtl) || '';
+    $('#stepText').textContent = val(st.text);
+  }
+  function hideExplain(h) { $('#rtl').hidden = h || !$('#rtl').textContent; $('#stepText').hidden = h; }
+  function narrate(tag, title, text) {
+    setStage(null); setHot([]);
+    $('#stageTag').textContent = tag; $('#stepCount').textContent = '';
+    $('#stepTitle').textContent = title; $('#stepText').textContent = text;
+    $('#rtl').textContent = ''; hideExplain(false);
+  }
+
+  /* ---------- Quiz + input ---------- */
+  let quizResolve = null, quizAnswer = '';
+  const norm = s => String(s).trim().toUpperCase();
+  function matches(given, ans) {
+    const g = norm(given), a = norm(ans);
+    if (/^-?\d+$/.test(g) && /^-?\d+$/.test(a)) return Number(g) === Number(a);
+    if (a === 'YES') return g === 'YES' || g === 'Y';
+    if (a === 'NO') return g === 'NO' || g === 'N';
+    return g === a;
+  }
+  function askQuiz(q) {
+    return new Promise(res => {
+      quizAnswer = String(val(q.a));
+      $('#quizQ').textContent = val(q.q);
+      $('#quizIn').value = '';
+      $('#quizFb').textContent = ''; $('#quizFb').className = 'fb';
+      $('#quizBox').hidden = false;
+      $('#quizIn').focus({ preventScroll: true });
+      quizResolve = res;
+    });
+  }
+  function endQuiz() {
+    const r = quizResolve; quizResolve = null;
+    $('#quizBox').hidden = true;
+    if (r) r();
+  }
+  function renderScore() { $('#score').textContent = `${score[0]} correct out of ${score[1]}`; }
+  $('#quizForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!quizResolve) return;
+    const given = $('#quizIn').value;
+    if (!given.trim()) return;
+    score[1]++;
+    if (matches(given, quizAnswer)) {
+      score[0]++; renderScore();
+      $('#quizFb').textContent = 'Correct! Watch it happen…'; $('#quizFb').className = 'fb ok';
+      setTimeout(endQuiz, 700);
+    } else {
+      renderScore();
+      $('#quizFb').textContent = 'Not quite. Try again, or press Show me.'; $('#quizFb').className = 'fb bad';
+      $('#quizIn').select();
+    }
+  });
+  $('#quizShow').addEventListener('click', () => {
+    if (!quizResolve) return;
+    $('#quizFb').textContent = `The answer is ${quizAnswer}.`; $('#quizFb').className = 'fb';
+    setTimeout(endQuiz, 1100);
+  });
+
+  let inputResolve = null;
+  function getInput() {
+    return new Promise(res => {
+      $('#inputIn').value = ''; $('#inputFb').textContent = '';
+      $('#inputBox').hidden = false;
+      $('#inputIn').focus({ preventScroll: true });
+      inputResolve = res;
+    });
+  }
+  function endInput(v) {
+    const r = inputResolve; inputResolve = null;
+    $('#inputBox').hidden = true;
+    if (r) r(v);
+  }
+  $('#inputForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const raw = $('#inputIn').value.trim().replace('−', '-');
+    const v = Number(raw);
+    if (!/^-?\d+$/.test(raw) || v < -999 || v > 999) { $('#inputFb').textContent = 'Enter a whole number between -999 and 999.'; return; }
+    endInput(v);
+  });
+
+  /* ---------- Micro-steps ---------- */
+  const CTRL_PATH = [[330, 115], [330, 44], [1100, 44], [1100, 66]];
+  const ACC_ALU = [[250, 470], [360, 470], [360, 395], [445, 395], [445, 432]];
+  const MDR_ALU = [[565, 362], [565, 395], [605, 395], [605, 432]];
+  const ALU_ACC = [[525, 556], [525, 578], [165, 578], [165, 520], [165, 498]];
+
+  async function addressPhase(signal) {
+    await walkTo('mar');
+    selectCell(null);
+    await Promise.all([
+      onBus('#busAddr', () => sendPacket([[650, 186], [780, 186], cellC(M.mar)], p2(M.mar), 'addr')),
+      onBus('#busCtrl', () => sendPacket(CTRL_PATH, signal, 'ctrl'))
+    ]);
+    selectCell(M.mar);
+  }
+  async function dataToMdr() {
+    const v = M.mem[M.mar];
+    await walkTo('mdr');
+    await onBus('#busData', () => sendPacket([cellC(M.mar), [780, 326], [650, 326], [565, 326]], p3(v), 'data'));
+    setReg('mdr', v);
+  }
+
+  function stepAddress(stage, signal) {
+    return {
+      stage, hot: ['marG', 'memG', 'cuG'],
+      title: 'Send the address to memory',
+      rtl: () => `Address bus ← ${p2(M.mar)}   Control bus: ${signal}`,
+      text: () => `The MAR puts address ${p2(M.mar)} on the address bus. At the same time the control unit sends a ${signal} signal on the control bus, so memory location ${p2(M.mar)} is selected.`,
+      run: () => addressPhase(signal)
+    };
+  }
+  function stepRead(stage, what) {
+    return {
+      stage, hot: ['memG', 'mdrG'],
+      title: 'Data travels back on the data bus',
+      rtl: 'MDR ← [Memory[MAR]]',
+      text: () => `Location ${p2(M.mar)} holds ${p3(M.mem[M.mar])}${what}. It travels along the data bus into the Memory Data Register.`,
+      quiz: { q: () => `Location ${p2(M.mar)} has been selected. What value will arrive in the MDR? (Look at memory.)`, a: () => M.mem[M.mar] },
+      run: dataToMdr
+    };
+  }
+  function stepOperandToMar(d) {
+    return {
+      stage: 'E', hot: ['cirG', 'marG'],
+      title: 'Copy the operand into the MAR',
+      rtl: `MAR ← ${p2(d.operand)} (operand)`,
+      text: `The operand ${p2(d.operand)} is a memory address. The Little Man copies it from the CIR into the MAR so the CPU can reach location ${p2(d.operand)}.`,
+      quiz: { q: 'Which address goes into the MAR now?', a: d.operand },
+      run: async () => { await carry('cir', 'mar', p2(d.operand)); setReg('mar', d.operand); }
+    };
+  }
+
+  function fetchSteps() {
+    return [
+      {
+        stage: 'F', hot: ['pcG', 'marG'],
+        title: 'Copy the PC into the MAR',
+        rtl: 'MAR ← [PC]',
+        text: () => `The Program Counter holds ${p2(M.pc)}, the address of the next instruction. The Little Man copies it into the Memory Address Register.`,
+        quiz: { q: 'Which address will be copied from the PC into the MAR?', a: () => M.pc },
+        run: async () => {
+          curAddr = M.pc; markCurrent(curAddr);
+          $('#aluOp').textContent = '';
+          await carry('pc', 'mar', p2(M.pc));
+          setReg('mar', M.pc);
+        }
+      },
+      stepAddress('F', 'READ'),
+      stepRead('F', ' (the instruction)'),
+      {
+        stage: 'F', hot: ['pcG'],
+        title: 'Increment the PC',
+        rtl: 'PC ← [PC] + 1',
+        text: () => `The PC goes up by 1, from ${p2(M.pc)} to ${p2((M.pc + 1) % 100)}, so it points to the next instruction. The instruction we fetched is safe in the MDR.`,
+        quiz: { q: () => `The PC holds ${p2(M.pc)}. What will it hold after it is incremented?`, a: () => (M.pc + 1) % 100 },
+        run: async () => {
+          await walkTo('pc');
+          await floatText(125, 160, '+1');
+          setReg('pc', (M.pc + 1) % 100);
+        }
+      },
+      {
+        stage: 'F', hot: ['mdrG', 'cirG'],
+        title: 'Copy the MDR into the CIR',
+        rtl: 'CIR ← [MDR]',
+        text: () => `The instruction ${p3(M.mdr)} is copied from the MDR into the Current Instruction Register, where the control unit can decode it.`,
+        run: async () => {
+          clearDecode();
+          await carry('mdr', 'cir', p3(M.mdr));
+          setReg('cir', M.mdr);
+        }
+      },
+      {
+        stage: 'D', hot: ['cirG', 'cuG'],
+        title: 'Split the instruction into opcode and operand',
+        rtl: () => { const d = decodeInstr(M.cir); return `opcode ← ${d.op}   operand ← ${p2(d.operand)}`; },
+        text: () => {
+          const d = decodeInstr(M.cir);
+          let t = `The control unit splits ${p3(M.cir)} into two parts. The first digit, ${d.op}, is the opcode: it says what to do. The last two digits, ${p2(d.operand)}, are the operand: the data or address the instruction uses.`;
+          if (d.mn === 'INP' || d.mn === 'OUT') t += ` For opcode 9 the operand chooses input (01) or output (02).`;
+          if (d.mn === 'HLT') t += ' For HLT the operand is not used.';
+          return t;
+        },
+        quiz: { q: () => `The CIR holds ${p3(M.cir)}. What is the opcode?`, a: () => decodeInstr(M.cir).op },
+        run: async () => {
+          const d = decodeInstr(M.cir);
+          await walkTo('cir');
+          await Promise.all([
+            sendPacket([[117, 325], [232, 325]], String(d.op), 'dec'),
+            sendPacket([[117, 325], [340, 325]], p2(d.operand), 'addr')
+          ]);
+          $('#opVal').textContent = d.op; $('#operandVal').textContent = p2(d.operand);
+          flash('#cirBox');
+        }
+      },
+      {
+        stage: 'D', hot: ['cirG', 'decG'],
+        title: 'Decode the opcode',
+        rtl: () => { const d = decodeInstr(M.cir); return `opcode ${d.op} → ${d.mn}`; },
+        text: () => {
+          const d = decodeInstr(M.cir);
+          return d.valid
+            ? `The decoder looks up opcode ${d.op}: it is ${d.mn}, which means "${d.desc}". The control unit now knows which steps to carry out in the Execute stage.`
+            : `The decoder cannot match ${p3(M.cir)} to any instruction. The program may have run into data.`;
+        },
+        quiz: { q: () => { const d = decodeInstr(M.cir); return d.op === 9 ? `Opcode 9 with operand ${p2(d.operand)}: which instruction is it? (Type the mnemonic.)` : `Which instruction has opcode ${d.op}? (Type the mnemonic, e.g. ADD.)`; }, a: () => decodeInstr(M.cir).mn },
+        run: async () => {
+          const d = decodeInstr(M.cir);
+          await sendPacket([[232, 300], [232, 240], [335, 205]], String(d.op), 'dec');
+          $('#decVal').textContent = d.mn;
+          $('#decSub').textContent = d.valid ? ({ ADD: 'add', SUB: 'subtract', STA: 'store', LDA: 'load', BRA: 'branch always', BRZ: 'branch if zero', BRP: 'branch if positive', INP: 'input', OUT: 'output', HLT: 'halt' })[d.mn] : 'unknown';
+          flash('#decBox');
+          queue.push(...executeSteps(d));
+        }
+      }
+    ];
+  }
+
+  function aluSteps(sym, name) {
+    const calc = () => clamp(sym === '+' ? M.acc + M.mdr : M.acc - M.mdr);
+    return [
+      {
+        stage: 'E', hot: ['accG', 'mdrG', 'aluG'],
+        title: `The ALU ${name}s`,
+        rtl: `ALU ← [ACC] ${sym} [MDR]`,
+        text: () => `The ALU takes ${M.acc} from the accumulator and ${M.mdr} from the MDR and works out ${M.acc} ${sym} ${M.mdr} = ${calc()}.`,
+        quiz: { q: () => `ACC holds ${M.acc} and the MDR holds ${M.mdr}. What result will the ALU give for this ${name === 'add' ? 'ADD' : 'SUB'}?`, a: calc },
+        run: async () => {
+          await walkTo('alu');
+          $('#aluOp').textContent = '';
+          await Promise.all([sendPacket(ACC_ALU, String(M.acc), 'data'), sendPacket(MDR_ALU, String(M.mdr), 'data')]);
+          aluResult = calc();
+          $('#aluOp').textContent = `${M.acc} ${sym} ${M.mdr} = ${aluResult}`;
+          flash('#aluG .alu-shape');
+          await sleep(500);
+        }
+      },
+      {
+        stage: 'E', hot: ['aluG', 'accG'],
+        title: 'Store the result in the accumulator',
+        rtl: 'ACC ← ALU result',
+        text: () => `The answer, ${aluResult}, goes from the ALU back into the accumulator. It replaces the value that was there.`,
+        run: async () => {
+          await walkTo('acc');
+          await sendPacket(ALU_ACC, String(aluResult), 'alu');
+          setReg('acc', aluResult);
+        }
+      }
+    ];
+  }
+  const clamp = v => Math.max(-999, Math.min(999, v));
+
+  function branchCheck(d, label, test, cmp) {
+    return {
+      stage: 'E', hot: ['accG', 'aluG'],
+      title: 'The ALU checks the accumulator',
+      rtl: `Is [ACC] ${cmp}?`,
+      text: () => `The accumulator holds ${M.acc}. ${test(M.acc) ? `That is ${label}, so the branch will be taken.` : `That is not ${label}, so the branch will not be taken.`}`,
+      quiz: { q: () => `ACC holds ${M.acc}. Will ${d.mn} ${p2(d.operand)} jump? (yes / no)`, a: () => (test(M.acc) ? 'yes' : 'no') },
+      run: async () => {
+        await walkTo('alu');
+        await sendPacket(ACC_ALU, String(M.acc), 'data');
+        const ok = test(M.acc);
+        $('#aluOp').textContent = `${M.acc} ${cmp} ? ${ok ? 'yes' : 'no'}`;
+        flash('#aluG .alu-shape');
+        await sleep(500);
+        queue.unshift(ok ? stepJump(d) : stepNoJump());
+      }
+    };
+  }
+  function stepJump(d) {
+    return {
+      stage: 'E', hot: ['cirG', 'pcG'],
+      title: 'Jump: copy the operand into the PC',
+      rtl: `PC ← ${p2(d.operand)} (operand)`,
+      text: `The PC is overwritten with ${p2(d.operand)}. The next fetch will come from address ${p2(d.operand)} instead of the next line. This is how loops and IF statements work.`,
+      quiz: { q: 'What will the PC hold after the jump?', a: d.operand },
+      run: async () => { await carry('cir', 'pc', p2(d.operand)); setReg('pc', d.operand); }
+    };
+  }
+  function stepNoJump() {
+    return {
+      stage: 'E', hot: ['pcG'],
+      title: 'No jump: the PC stays the same',
+      rtl: 'PC unchanged',
+      text: () => `The PC already points to the next instruction (${p2(M.pc)}) because it was incremented during Fetch, so the program carries on in order.`,
+      run: async () => { await walkTo('pc'); flash('#pcBox'); await sleep(400); }
+    };
+  }
+
+  function executeSteps(d) {
+    switch (d.mn) {
+      case 'LDA': return [
+        stepOperandToMar(d), stepAddress('E', 'READ'), stepRead('E', ''),
+        {
+          stage: 'E', hot: ['mdrG', 'accG'],
+          title: 'Copy the MDR into the accumulator',
+          rtl: 'ACC ← [MDR]',
+          text: () => `The value ${M.mdr} is copied from the MDR into the accumulator. LDA is complete.`,
+          run: async () => { await carry('mdr', 'acc', p3(M.mdr)); setReg('acc', M.mdr); }
+        }
+      ];
+      case 'STA': return [
+        stepOperandToMar(d),
+        {
+          stage: 'E', hot: ['accG', 'mdrG'],
+          title: 'Copy the accumulator into the MDR',
+          rtl: 'MDR ← [ACC]',
+          text: () => `To write to memory, the value must be in the MDR. The Little Man copies ${M.acc} from the accumulator into the MDR.`,
+          quiz: { q: 'Which value will be copied into the MDR?', a: () => M.acc },
+          run: async () => { await carry('acc', 'mdr', p3(M.acc)); setReg('mdr', M.acc); }
+        },
+        stepAddress('E', 'WRITE'),
+        {
+          stage: 'E', hot: ['mdrG', 'memG'],
+          title: 'Write the data into memory',
+          rtl: 'Memory[MAR] ← [MDR]',
+          text: () => `The value ${p3(M.mdr)} travels from the MDR along the data bus into location ${p2(M.mar)}, replacing the ${p3(M.mem[M.mar])} that was there.`,
+          run: async () => {
+            await walkTo('mdr');
+            await onBus('#busData', () => sendPacket([[565, 326], [650, 326], [780, 326], cellC(M.mar)], p3(M.mdr), 'data'));
+            M.mem[M.mar] = M.mdr; renderCell(M.mar); flash(cells[M.mar].g); updateListingCode(M.mar);
+          }
+        }
+      ];
+      case 'ADD': return [stepOperandToMar(d), stepAddress('E', 'READ'), stepRead('E', ''), ...aluSteps('+', 'add')];
+      case 'SUB': return [stepOperandToMar(d), stepAddress('E', 'READ'), stepRead('E', ''), ...aluSteps('−', 'subtract')];
+      case 'BRA': return [stepJump(d)];
+      case 'BRZ': return [branchCheck(d, 'zero', v => v === 0, '= 0')];
+      case 'BRP': return [branchCheck(d, 'zero or positive', v => v >= 0, '≥ 0')];
+      case 'INP': return [{
+        stage: 'E', hot: ['inG', 'accG'],
+        title: 'Wait for input',
+        rtl: 'ACC ← Input',
+        text: 'The program needs a number. Type one into the box below and it will be placed in the accumulator.',
+        run: async () => {
+          await walkTo('io');
+          const v = await getInput();
+          $('#inVal').textContent = v; flash('#inG .io-box');
+          await sendPacket([[130, 650], [130, 600], [130, 498]], String(v), 'data');
+          setReg('acc', v);
+        }
+      }];
+      case 'OUT': return [{
+        stage: 'E', hot: ['accG', 'outG'],
+        title: 'Send the accumulator to the output',
+        rtl: 'Output ← [ACC]',
+        text: () => `The value ${M.acc} is copied from the accumulator to the output. The accumulator still holds ${M.acc}.`,
+        quiz: { q: 'Which number will be output?', a: () => M.acc },
+        run: async () => {
+          await walkTo('acc');
+          await sendPacket([[220, 520], [220, 596], [370, 596], [370, 660]], String(M.acc), 'data');
+          $('#outVal').textContent = M.acc; flash('#outG .io-box');
+          const s = document.createElement('span'); s.textContent = M.acc; $('#outList').appendChild(s);
+        }
+      }];
+      case 'HLT': return [{
+        stage: 'E', hot: ['cuG'],
+        title: 'Halt',
+        rtl: 'Stop',
+        text: 'HLT tells the control unit to stop the cycle. The program has finished. Press Reset to run it again, or load another program.',
+        run: async () => { await walkTo('pc'); M.halted = true; }
+      }];
+      default: return [{
+        stage: 'E', hot: ['cirG'],
+        title: 'Unknown instruction',
+        rtl: 'Stop',
+        text: () => `${p3(M.cir)} is not a valid instruction, so the computer stops. Check that the program ends with HLT before its DAT lines.`,
+        run: async () => { M.halted = true; }
+      }];
+    }
+  }
+
+  /* ---------- Runner ---------- */
+  function ensureQueue() { if (!queue.length && !M.halted) queue = fetchSteps(); }
+
+  async function doStep() {
+    if (busy || M.halted) return false;
+    ensureQueue();
+    const st = queue.shift();
+    busy = true; updateButtons();
+    showStep(st);
+    if (quizOn && st.quiz && !S.rush) { hideExplain(true); await askQuiz(st.quiz); }
+    hideExplain(false);
+    await st.run();
+    busy = false;
+    if (st.stage === 'E' && !queue.length) { M.cycles++; renderCycles(); }
+    if (resetPending) { resetPending = false; doReset(); return false; }
+    if (M.halted) { setHot([]); }
+    else if (!queue.length) $('#stepText').textContent += ' The instruction is complete, so the cycle starts again with Fetch.';
+    updateButtons();
+    return true;
+  }
+
+  async function runWhile(cond, pause) {
+    if (running || busy || M.halted) return;
+    running = true; updateButtons();
+    while (running && !M.halted) {
+      const ok = await doStep();
+      if (!ok || !cond()) break;
+      await sleep(pause);
+    }
+    running = false; updateButtons();
+  }
+
+  function updateButtons() {
+    const idle = !busy && !running;
+    $('#stepBtn').disabled = !idle || M.halted;
+    $('#stageBtn').disabled = !idle || M.halted;
+    $('#instrBtn').disabled = !idle || M.halted;
+    $('#runBtn').disabled = M.halted || (busy && !running);
+    $('#runBtn').textContent = running ? 'Pause' : 'Run';
+  }
+
+  function doReset() {
+    S.rush = false;
+    M.mem = prog.mem.slice();
+    M.pc = M.mar = M.mdr = M.cir = M.acc = 0;
+    M.halted = false; M.cycles = 0;
+    queue = []; curAddr = 0; lastStage = null;
+    fx.innerHTML = '';
+    showAll(); clearDecode(); renderMemory(); renderCycles();
+    selectCell(null); markCurrent(0);
+    $('#aluOp').textContent = ''; $('#inVal').textContent = '—'; $('#outVal').textContent = '—';
+    $('#outList').innerHTML = '';
+    man.x = SPOT.pc[0]; man.y = SPOT.pc[1]; man.facing = 1;
+    manBody.setAttribute('transform', 'scale(1,1)'); drop(); setLimbs(0); placeMan();
+    $('#quizBox').hidden = true; $('#inputBox').hidden = true;
+    narrate('Ready', 'Ready to fetch the first instruction',
+      `The program has been loaded into memory starting at address 00, and the PC holds 00. Press Next step to watch the Little Man start the Fetch stage.`);
+    updateButtons();
+  }
+
+  function requestReset() {
+    running = false;
+    if (busy) {
+      resetPending = true; S.rush = true;
+      if (quizResolve) endQuiz();
+      if (inputResolve) endInput(0);
+    } else doReset();
+  }
+
+  function loadProgram() {
+    const res = assemble($('#code').value);
+    const msg = $('#asmMsg');
+    if (res.errors.length) {
+      msg.className = 'msg err';
+      msg.textContent = res.errors.slice(0, 6).join('\n');
+      return;
+    }
+    prog = res;
+    msg.className = 'msg ok';
+    msg.textContent = `Loaded ${res.items.length} memory locations (00–${p2(res.items.length - 1)}).`;
+    renderListing();
+    requestReset();
+  }
+
+  /* ---------- Info panel ---------- */
+  const INFO = {
+    pc: ['Program Counter (PC)', 'Holds the address of the next instruction to fetch. It goes up by 1 during every Fetch. A branch instruction can overwrite it to jump somewhere else.'],
+    mar: ['Memory Address Register (MAR)', 'Holds the address of the memory location the CPU wants to read from or write to. It sends that address to memory along the address bus.'],
+    mdr: ['Memory Data Register (MDR)', 'Holds the instruction or data that has just been read from memory, or that is about to be written to memory. It is connected to the data bus.'],
+    cir: ['Current Instruction Register (CIR)', 'Holds the instruction being decoded and executed. The control unit splits it into an opcode (what to do) and an operand (the address or data to use).'],
+    dec: ['Decoder', 'Part of the control unit. It works out what the opcode means and which steps are needed to execute it.'],
+    acc: ['Accumulator (ACC)', 'A general purpose register that holds the value being worked on: the results of the ALU, values loaded from memory, input and output.'],
+    alu: ['Arithmetic Logic Unit (ALU)', 'Carries out arithmetic, such as addition and subtraction, and logic, such as checking whether the accumulator is zero or positive for a branch.'],
+    cu: ['Control unit (CU)', 'Co-ordinates the whole FDE cycle. It decodes each instruction and sends control signals, such as READ and WRITE, along the control bus.'],
+    abus: ['Address bus', 'Carries addresses from the MAR to memory. It is one way: the CPU tells memory which location it wants.'],
+    dbus: ['Data bus', 'Carries instructions and data between memory and the MDR. It is two way, because data is both read from and written to memory.'],
+    cbus: ['Control bus', 'Carries control signals from the control unit, such as READ (memory read) and WRITE (memory write), as well as clock signals.'],
+    mem: ['Main memory (RAM)', '100 numbered locations, 00 to 99. Each holds one number, which can be an instruction or data. Instructions and data share the same memory: this is the stored program (von Neumann) idea.'],
+    man: ['The Little Man', 'He stands for the control unit doing its work. Every trip he makes is one register transfer in the cycle.'],
+    input: ['Input', 'INP takes a number from the keyboard and puts it into the accumulator.'],
+    output: ['Output', 'OUT copies the number in the accumulator to the screen.']
+  };
+  function setInfo(title, text) {
+    const box = $('#info');
+    box.innerHTML = '';
+    const s = document.createElement('strong'); s.textContent = title;
+    const p = document.createElement('p'); p.textContent = text;
+    box.append(s, p);
+  }
+  function cellInfo(a) {
+    const v = M.mem[a];
+    const it = prog && prog.items[a];
+    let t = `Address ${p2(a)} holds ${p3(v)}.`;
+    if (it && it.label) t += ` Its label is "${it.label}".`;
+    if (it && it.mn === 'DAT') t += ' This location was set up with DAT, so the program uses it as data.';
+    else {
+      const d = decodeInstr(v);
+      t += d.valid
+        ? ` Read as an instruction: opcode ${d.op} (${d.mn}), operand ${p2(d.operand)}.`
+        : ' It is not a valid instruction.';
+      if (!it && v === 0) t += ' This location is unused.';
+    }
+    setInfo('Memory location ' + p2(a), t);
+  }
+  function handleInfo(target) {
+    const cell = target.closest('.cell');
+    if (cell) { cellInfo(Number(cell.dataset.addr)); return; }
+    const g = target.closest('[data-info]');
+    if (g && INFO[g.dataset.info]) setInfo(...INFO[g.dataset.info]);
+  }
+  $('#cpu').addEventListener('click', e => handleInfo(e.target));
+  $('#cpu').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleInfo(e.target); } });
+
+  /* ---------- Wiring ---------- */
+  const exSel = $('#example');
+  EXAMPLES.forEach((ex, i) => { const o = document.createElement('option'); o.value = i; o.textContent = ex.name; exSel.appendChild(o); });
+  exSel.addEventListener('change', () => { $('#code').value = EXAMPLES[exSel.value].code; loadProgram(); });
+  $('#code').addEventListener('input', () => { const m = $('#asmMsg'); m.className = 'msg'; m.textContent = 'Program edited. Press Load into memory to assemble it.'; });
+  $('#loadBtn').addEventListener('click', loadProgram);
+  $('#stepBtn').addEventListener('click', () => doStep());
+  $('#stageBtn').addEventListener('click', () => {
+    ensureQueue();
+    const stg = queue.length ? queue[0].stage : null;
+    runWhile(() => queue.length > 0 && queue[0].stage === stg, 250);
+  });
+  $('#instrBtn').addEventListener('click', () => { ensureQueue(); runWhile(() => queue.length > 0, 250); });
+  $('#runBtn').addEventListener('click', () => { if (running) { running = false; updateButtons(); } else runWhile(() => true, 450); });
+  $('#resetBtn').addEventListener('click', requestReset);
+  $('#speed').addEventListener('change', e => { S.speed = Number(e.target.value); });
+  $('#quizOn').addEventListener('change', e => { quizOn = e.target.checked; $('#scoreBox').hidden = !quizOn; renderScore(); });
+  document.addEventListener('keydown', e => {
+    if (e.target.closest('input, textarea, select')) return;
+    if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'n') { e.preventDefault(); if (!$('#stepBtn').disabled) doStep(); }
+  });
+
+  $('#code').value = EXAMPLES[0].code;
+  loadProgram();
+})();
+</script>
+
+</body></html>

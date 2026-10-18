@@ -1,0 +1,699 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Web Technologies Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: squared-paper worksheet like the other revision pages. Source code on the left, the rendered mini page and what happened on the right. */
+:root {
+  --paper: #eef2f7; --grid: #dde4ee; --surface: #ffffff; --unit: #f3f6fa;
+  --ink: #14213a; --ink-soft: #56637a; --line: #a6b2c4;
+  --html: #c2365b; --css: #b26f06; --js: #2459c4; --srv: #6a4bd0; --cli: #0b8587;
+  --on-accent: #ffffff; --ok: #1b7f47; --bad: #c0392b;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+    --html: #ff6f91; --css: #f0a832; --js: #6f9bff; --srv: #a68dff; --cli: #33c3c1; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+  --html: #ff6f91; --css: #f0a832; --js: #6f9bff; --srv: #a68dff; --cli: #33c3c1; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px; color: var(--ink); font: 16px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(1.7rem, 3.2vw, 2.5rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; font-weight: 700; } h3 { font-size: 1rem; font-weight: 700; }
+p { margin: 0; }
+code { font-family: var(--font-mono); background: var(--unit); border-radius: 4px; padding: 0 4px; font-size: .92em; }
+.t-html { color: var(--html); font-weight: 700; } .t-css { color: var(--css); font-weight: 700; } .t-js { color: var(--js); font-weight: 700; } .t-srv { color: var(--srv); font-weight: 700; } .t-cli { color: var(--cli); font-weight: 700; }
+
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.top p { margin-top: 4px; color: var(--ink-soft); max-width: 64ch; }
+.global { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.global label { font-size: .9rem; display: inline-flex; align-items: center; gap: 6px; }
+select, input[type="text"], input[type="number"], textarea { font: 14px/1.5 var(--font-mono); color: var(--ink); background: var(--unit); border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px; max-width: 100%; }
+select { font-family: var(--font-body); font-size: .9rem; }
+input[type="text"] { width: 100%; }
+textarea { width: 100%; resize: vertical; tab-size: 2; white-space: pre; overflow: auto; min-height: 120px; }
+select:focus, input:focus, textarea:focus, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--js) 55%, transparent); outline-offset: 2px; }
+.toggle { cursor: pointer; } .toggle input { width: 18px; height: 18px; accent-color: var(--js); }
+.score { font-size: .9rem; color: var(--ink-soft); }
+
+.intro { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.layer { background: var(--unit); border-radius: 10px; padding: 10px 12px; border-left: 4px solid var(--tc); }
+.layer b { font-family: var(--font-display); color: var(--tc); display: block; }
+.layer p { font-size: .9rem; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.tabs button { flex: none; font: 700 .92rem var(--font-body); color: var(--ink-soft); background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tabs button:hover:not([aria-selected="true"]) { background: var(--unit); color: var(--ink); }
+
+.tab { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tab.wide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1000px) { .tab { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.hint { font-size: .85rem; color: var(--ink-soft); }
+.msg { font-size: .9rem; min-height: 1.2em; } .msg.err { color: var(--bad); }
+.btn { font: 700 .92rem var(--font-body); color: var(--ink); background: var(--surface); border: 1.5px solid var(--ink); border-radius: 8px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--unit); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 85%, var(--paper)); }
+.btn.small { font-size: .8rem; padding: 4px 9px; border-width: 1px; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn kbd { font: 600 .72rem var(--font-mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .7; }
+.method { background: var(--unit); border-radius: 10px; padding: 12px 14px; }
+.method h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-family: var(--font-body); margin-bottom: 6px; }
+.method ol, .method ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; font-size: .93rem; }
+.method ol li::marker { font-family: var(--font-display); font-weight: 800; color: var(--js); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Code */
+pre.code { margin: 0; background: var(--unit); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13.5px/1.6 var(--font-mono); counter-reset: ln; }
+pre.code .ln { display: block; padding: 0 12px 0 44px; position: relative; white-space: pre; min-width: max-content; }
+pre.code .ln::before { counter-increment: ln; content: counter(ln); position: absolute; left: 12px; color: var(--line); width: 22px; text-align: right; }
+pre.code .ln.cur { background: color-mix(in srgb, var(--js) 18%, var(--surface)); box-shadow: inset 3px 0 0 var(--js); }
+pre.code .ln.hl { background: color-mix(in srgb, var(--html) 14%, var(--surface)); box-shadow: inset 3px 0 0 var(--html); }
+pre.code .ln.hlc { background: color-mix(in srgb, var(--css) 16%, var(--surface)); box-shadow: inset 3px 0 0 var(--css); }
+pre.code .tg { color: var(--html); } pre.code .at { color: var(--css); } pre.code .st { color: var(--ok); } pre.code .kw { color: var(--js); font-weight: 700; } pre.code .cm { color: var(--ink-soft); }
+.codehead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.codehead .lang { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; }
+.lang.html { color: var(--html); } .lang.css { color: var(--css); } .lang.js { color: var(--js); }
+.editor { display: grid; gap: 4px; }
+.editor label { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; }
+
+/* Rendered mini page */
+.browser { border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; color: #111; }
+.browser .bar { background: var(--unit); color: var(--ink-soft); font: .78rem var(--font-mono); padding: 6px 10px; border-bottom: 1.5px solid var(--line); display: flex; gap: 8px; align-items: center; }
+.browser .bar i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.sbx { padding: 14px; min-height: 120px; font: 15px/1.4 Arial, Helvetica, sans-serif; color: #111; background: #fff; overflow-x: auto; }
+.sbx * { max-width: 100%; }
+.sbx [data-pick] { cursor: pointer; outline: 1.5px dashed transparent; outline-offset: 2px; transition: outline-color .15s; }
+.sbx [data-pick]:hover { outline-color: #c2365b; }
+.sbx [data-pick].picked { outline: 2px solid #c2365b; background: rgba(194, 54, 91, .08); }
+.sbx .cssmatch { outline: 2px solid #b26f06; outline-offset: 2px; }
+.sbx input, .sbx button { font: 14px Arial, Helvetica, sans-serif; padding: 4px 8px; margin: 2px 0; }
+.sbx input[type="text"] { border: 1px solid #888; border-radius: 3px; width: auto; background: #fff; color: #111; }
+.sbx button, .sbx input[type="submit"] { border: 1px solid #666; border-radius: 4px; background: #efefef; color: #111; cursor: pointer; }
+.alertbox { background: #fff; color: #111; border: 1.5px solid #888; border-radius: 8px; padding: 10px 12px; font: 14px Arial, sans-serif; display: grid; gap: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, .18); max-width: 360px; }
+.alertbox .ttl { font-weight: 700; font-size: .8rem; color: #555; }
+.alertbox button { justify-self: end; font: 700 13px Arial, sans-serif; padding: 4px 14px; border: 1px solid #666; border-radius: 4px; background: #efefef; cursor: pointer; }
+
+/* Inspector */
+.inspect { display: grid; gap: 8px; }
+.inspect .row { background: var(--unit); border-radius: 8px; padding: 8px 10px; font-size: .92rem; border-left: 4px solid var(--tc); }
+.inspect .row b { font-family: var(--font-display); color: var(--tc); display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+.inspect .row code { font-size: .88rem; }
+
+/* Trace console */
+.console { background: var(--unit); border-radius: 10px; padding: 10px 12px; font: .86rem/1.5 var(--font-mono); display: grid; gap: 4px; max-height: 300px; overflow-y: auto; }
+.console:empty::before { content: "Press Run, then use the page above. Each DOM call is logged here."; font: .86rem var(--font-body); color: var(--ink-soft); }
+.console div { border-left: 3px solid var(--line); padding-left: 8px; }
+.console .ok { border-color: var(--ok); } .console .bad { border-color: var(--bad); color: var(--bad); font-family: var(--font-body); } .console .ev { border-color: var(--js); color: var(--js); font-weight: 700; } .console .note { font-family: var(--font-body); color: var(--ink-soft); }
+
+/* Walkthrough */
+.wt { display: grid; gap: 12px; }
+.narration { display: grid; gap: 8px; }
+.narr-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stage-tag { font: 800 .76rem var(--font-body); letter-spacing: .1em; text-transform: uppercase; background: var(--js); color: var(--on-accent); padding: 3px 10px; border-radius: 999px; }
+.stage-tag.done { background: var(--ok); } .stage-tag.ready { background: var(--ink-soft); }
+.step-count { font-size: .85rem; color: var(--ink-soft); }
+.step-title { font-size: 1.25rem; } .step-text { max-width: 70ch; }
+.ask { display: grid; gap: 8px; background: color-mix(in srgb, var(--js) 8%, var(--surface)); border: 1.5px solid var(--js); border-radius: 10px; padding: 12px; }
+.ask form { display: flex; flex-wrap: wrap; gap: 8px; } .ask input { flex: 1 1 140px; width: auto; } .ask p { font-weight: 700; }
+.fb { font-size: .9rem; min-height: 1.3em; } .fb.ok { color: var(--ok); } .fb.bad { color: var(--bad); }
+.work { display: grid; gap: 8px; }
+.vars { display: flex; flex-wrap: wrap; gap: 6px; }
+.vars span { font: 700 .9rem var(--font-mono); background: var(--unit); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+.vars span b { color: var(--js); }
+
+/* Tag reference */
+.tagcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
+.tagcard { border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.tagcard h3 { font-family: var(--font-mono); color: var(--html); font-size: .95rem; }
+.tagcard p { font-size: .88rem; }
+.tagcard pre.code { font-size: 12.5px; }
+.tagcard .demo { border: 1px dashed var(--line); border-radius: 6px; padding: 6px 8px; background: #fff; color: #111; font: 14px Arial, sans-serif; }
+.tagcard .demo * { margin: 2px 0; max-width: 100%; }
+
+/* CSS tab */
+.rulebuilder { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); align-items: end; }
+.rulebuilder label { display: grid; gap: 4px; font-size: .8rem; color: var(--ink-soft); }
+.rules { display: grid; gap: 6px; }
+.rule { display: flex; justify-content: space-between; gap: 8px; align-items: center; background: var(--unit); border-radius: 8px; padding: 6px 10px; font: .88rem var(--font-mono); }
+.rule .sel { color: var(--css); font-weight: 700; }
+table.spec { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.spec th, table.spec td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: left; vertical-align: top; }
+table.spec th { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+
+/* Client / server */
+.cs { overflow-x: auto; }
+.cs svg { display: block; width: 100%; max-width: 720px; height: auto; }
+.cs .box { fill: var(--surface); stroke-width: 2; } .cs .cli { stroke: var(--cli); } .cs .srv { stroke: var(--srv); }
+.cs .lbl { font: 800 14px var(--font-display); fill: var(--ink); } .cs .sm { font: 11.5px var(--font-body); fill: var(--ink-soft); }
+.cs .arrow { fill: none; stroke: var(--line); stroke-width: 2; stroke-dasharray: 6 5; } .cs .arrow.on { stroke: var(--ink); stroke-dasharray: none; }
+.cs .mono { font: 11px var(--font-mono); fill: var(--ink); }
+.cs .chip { font: 700 11px var(--font-body); fill: var(--on-accent); }
+.cs .runs { fill: color-mix(in srgb, var(--ok) 25%, var(--surface)); stroke: var(--ok); }
+
+/* Exam + quiz */
+.qcard { border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+.qcard .qhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; align-items: baseline; }
+.marks { font: 700 .75rem var(--font-body); color: var(--on-accent); background: var(--ink-soft); padding: 2px 8px; border-radius: 999px; }
+.answer { background: var(--unit); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+.answer ul { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: .93rem; }
+.answer .mp { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+.answer pre.code { background: var(--surface); }
+.q-fields { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.q-fields label { display: grid; gap: 4px; font-size: .85rem; color: var(--ink-soft); }
+.q-prompt { font-size: 1.05rem; max-width: 72ch; } .q-prompt pre.code { margin-top: 8px; }
+
+details.tips { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+details.tips summary { cursor: pointer; font: 700 1.05rem var(--font-display); }
+details.tips ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: .95rem; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Web technologies: HTML, CSS and JavaScript</h1>
+      <p>Everything OCR A Level H446 topic 1.3.4 expects you to read and write: the structure of a page, how it is styled, how JavaScript changes it in the browser, and what runs on the client versus the server. Edit the code and the mini page on the right responds.</p>
+    </div>
+    <div class="global">
+      <label class="toggle"><input type="checkbox" id="quizOn"> Quiz me</label>
+      <span class="score" id="scoreBox" hidden>Quiz: <span id="score">0 / 0</span></span>
+    </div>
+  </header>
+
+  <section class="intro" aria-label="The three layers">
+    <div class="layer" style="--tc:var(--html)"><b>HTML: structure and content</b><p>Tags mark up what each part of the page <em>is</em>: a heading, a paragraph, an image, a form. Attributes such as <code>id</code> and <code>class</code> label elements so CSS and JavaScript can find them.</p></div>
+    <div class="layer" style="--tc:var(--css)"><b>CSS: appearance</b><p>Rules made of a <em>selector</em> and <em>properties</em> say how elements look: colour, size, font, borders. Kept in a <code>&lt;style&gt;</code> block or an external file linked with <code>&lt;link&gt;</code>.</p></div>
+    <div class="layer" style="--tc:var(--js)"><b>JavaScript: behaviour</b><p>Code that runs in the browser (client-side). It reads what the user typed, does a calculation and writes the result back into the page through the DOM: <code>document.getElementById("id")</code>.</p></div>
+  </section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="anatomy" aria-selected="true">Anatomy of a page</button>
+    <button role="tab" data-tab="html" aria-selected="false">HTML tags</button>
+    <button role="tab" data-tab="css" aria-selected="false">CSS</button>
+    <button role="tab" data-tab="js" aria-selected="false">JavaScript playground</button>
+    <button role="tab" data-tab="trace" aria-selected="false">Trace a model answer</button>
+    <button role="tab" data-tab="cs" aria-selected="false">Client or server?</button>
+    <button role="tab" data-tab="exam" aria-selected="false">Exam questions</button>
+    <button role="tab" data-tab="quiz" aria-selected="false">Quick quiz</button>
+  </nav>
+
+  <!-- Anatomy -->
+  <section class="tab" id="tab-anatomy" role="tabpanel">
+    <div class="panel">
+      <div class="codehead"><h2>The source</h2><span class="lang html">index.html</span></div>
+      <pre class="code" id="anHtml"></pre>
+      <div class="codehead"><span class="lang css">styles.css (linked from the head)</span></div>
+      <pre class="code" id="anCss"></pre>
+    </div>
+    <div class="panel">
+      <h2>The page the browser shows</h2>
+      <p class="hint">Click anything in the page to see the HTML that produced it, the CSS rules that style it, and how JavaScript would reach it.</p>
+      <div class="browser"><div class="bar"><i></i><i></i><i></i> file:///index.html</div><div class="sbx" id="anPage"></div></div>
+      <div class="inspect" id="anInspect"></div>
+    </div>
+  </section>
+
+  <!-- HTML tags -->
+  <section class="tab wide" id="tab-html" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>The tags OCR expects you to know</h2><span class="hint">Each card shows the code and what the browser renders. Attributes in orange.</span></div>
+      <div class="tagcards" id="tagcards"></div>
+      <div class="method">
+        <h3>Rules of HTML worth marks</h3>
+        <ul>
+          <li>A page is <code>&lt;html&gt;</code> containing a <code>&lt;head&gt;</code> (information about the page: the <code>&lt;title&gt;</code>, links to CSS, scripts) and a <code>&lt;body&gt;</code> (everything that is displayed).</li>
+          <li>Most tags come in pairs: an opening tag and a closing tag with a slash, <code>&lt;p&gt;…&lt;/p&gt;</code>. <code>&lt;img&gt;</code>, <code>&lt;input&gt;</code> and <code>&lt;link&gt;</code> have no closing tag.</li>
+          <li>Attributes go inside the opening tag as <code>name="value"</code>: <code>&lt;img src="logo.png" alt="Club logo"&gt;</code>.</li>
+          <li><code>id</code> must be unique on the page and is how JavaScript finds an element. <code>class</code> can be shared by many elements and is mostly used by CSS.</li>
+          <li>Nest tags properly: close the inner tag before the outer one. <code>&lt;li&gt;</code> only lives inside <code>&lt;ul&gt;</code> or <code>&lt;ol&gt;</code>.</li>
+          <li>Give every <code>&lt;img&gt;</code> an <code>alt</code>: it describes the image for screen readers and shows if the file is missing.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CSS -->
+  <section class="tab" id="tab-css" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Build a stylesheet</h2>
+      <p class="hint">Add rules one at a time. Each rule is a <b class="t-css">selector</b> followed by <b>property: value;</b> pairs inside braces. Matching elements light up on the right.</p>
+      <div class="rulebuilder">
+        <label>Selector<select id="rbSel"><option value="h1">h1 (every h1 element)</option><option value="p">p (every paragraph)</option><option value="li">li (every list item)</option><option value=".note">.note (class="note")</option><option value="#box">#box (id="box")</option><option value="#title">#title (id="title")</option><option value="body">body (the whole page)</option></select></label>
+        <label>Property<select id="rbProp"><option>color</option><option>background-color</option><option>font-family</option><option>font-size</option><option>border-width</option><option>border-style</option><option>border-color</option><option>width</option><option>height</option></select></label>
+        <label>Value<input type="text" id="rbVal" value="red" spellcheck="false"></label>
+        <button class="btn primary" type="button" id="rbAdd">Add rule</button>
+      </div>
+      <p class="msg err" id="rbMsg"></p>
+      <div class="codehead"><span class="lang css">styles.css</span><button class="btn small" type="button" id="rbClear">Clear all</button></div>
+      <pre class="code" id="cssOut"></pre>
+      <div class="method">
+        <h3>How CSS is attached to a page</h3>
+        <ul>
+          <li><b>External:</b> a separate file, linked in the head: <code>&lt;link rel="stylesheet" href="styles.css"&gt;</code>. One file styles every page of the site, so a change is made once; the browser can cache it.</li>
+          <li><b>Internal:</b> a <code>&lt;style&gt;</code> block in the head of one page. Good for a one-off page; the rules only apply there.</li>
+          <li><b>Inline:</b> a <code>style="…"</code> attribute on a single tag. Quick, but mixes appearance into the HTML and cannot be reused.</li>
+          <li><b>Which rule wins?</b> An id selector beats a class selector, which beats an element selector. If two rules have the same type of selector, the one written later wins.</li>
+        </ul>
+      </div>
+      <div class="method">
+        <h3>The properties on the specification</h3>
+        <table class="spec"><tr><th>Property</th><th>Example values</th></tr><tr><td><code>color</code></td><td>red, #2459c4, rgb(0, 0, 255): the text colour</td></tr><tr><td><code>background-color</code></td><td>yellow, #fff3c4</td></tr><tr><td><code>font-family</code></td><td>Arial, "Times New Roman", sans-serif</td></tr><tr><td><code>font-size</code></td><td>20px, 1.5em, larger</td></tr><tr><td><code>border-width</code> / <code>border-style</code> / <code>border-color</code></td><td>2px / solid, dashed, dotted / green</td></tr><tr><td><code>width</code> / <code>height</code></td><td>200px, 50%</td></tr></table>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>The page, restyled live</h2>
+      <div class="browser"><div class="bar"><i></i><i></i><i></i> file:///index.html</div><div class="sbx" id="cssPage"></div></div>
+      <p class="hint" id="cssMatch">Hover a rule on the left to see which elements it matches.</p>
+    </div>
+  </section>
+
+  <!-- JavaScript playground -->
+  <section class="tab" id="tab-js" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Playground</h2><select id="preset" aria-label="Exercise"></select></div>
+      <p class="hint" id="presetHint"></p>
+      <div class="editor"><label class="lang html">HTML (inside &lt;body&gt;)</label><textarea id="edHtml" spellcheck="false" rows="7"></textarea></div>
+      <div class="editor"><label class="lang css">CSS (inside &lt;style&gt;)</label><textarea id="edCss" spellcheck="false" rows="3"></textarea></div>
+      <div class="editor"><label class="lang js">JavaScript (inside &lt;script&gt;)</label><textarea id="edJs" spellcheck="false" rows="9"></textarea></div>
+      <div class="controls"><button class="btn primary" type="button" id="runBtn">Run <kbd>⌘/Ctrl + Enter</kbd></button><button class="btn" type="button" id="solBtn">Show a model answer</button><button class="btn" type="button" id="resetBtn">Reset exercise</button></div>
+      <p class="msg err" id="jsMsg" role="status"></p>
+    </div>
+    <div class="panel">
+      <h2>The page</h2>
+      <div class="browser"><div class="bar"><i></i><i></i><i></i> file:///index.html</div><div class="sbx" id="jsPage"><p style="color:#888">Press Run to load your HTML.</p></div><div id="alertHost" style="padding:0 14px 14px" hidden></div></div>
+      <h3>What the browser did</h3>
+      <div class="console" id="jsConsole" aria-live="polite"></div>
+      <div class="method">
+        <h3>The JavaScript you need</h3>
+        <ul>
+          <li><code>var total = 0;</code> declares a variable. (<code>let</code> is also accepted.)</li>
+          <li><code>function calc() { … }</code> defines a function. It runs only when something calls it.</li>
+          <li><code>onclick="calc()"</code> on a button calls the function when the button is clicked.</li>
+          <li><code>document.getElementById("num").value</code> reads what the user typed into an input (always a <b>string</b>).</li>
+          <li><code>parseInt(text)</code> or <code>parseFloat(text)</code> turns that string into a number. Without it, <code>"12" + "3"</code> is <code>"123"</code>.</li>
+          <li><code>document.getElementById("result").innerHTML = "…"</code> writes into the page.</li>
+          <li><code>alert("message")</code> pops up a message box.</li>
+          <li><code>if (x == "") { … } else { … }</code> for a decision; <code>==</code> compares, <code>=</code> assigns.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trace -->
+  <section class="tab" id="tab-trace" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>A full-mark answer, line by line</h2>
+      <p class="hint">The classic question: two inputs, a button, show the sum. Step through what the browser does from loading the page to showing the answer.</p>
+      <div class="codehead"><span class="lang html">index.html</span></div>
+      <pre class="code" id="trHtml"></pre>
+      <div class="codehead"><span class="lang js">the &lt;script&gt; section</span></div>
+      <pre class="code" id="trJs"></pre>
+    </div>
+    <div class="panel">
+      <h2>What happens</h2>
+      <div class="browser"><div class="bar"><i></i><i></i><i></i> file:///index.html</div><div class="sbx" id="trPage"></div></div>
+      <div class="wt" id="wt-trace"></div>
+    </div>
+  </section>
+
+  <!-- Client / server -->
+  <section class="tab" id="tab-cs" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Where does the code run?</h2>
+      <p class="hint">Pick a task. The diagram shows which side does the work and what travels across the network.</p>
+      <select id="csTask" aria-label="Task"></select>
+      <div class="cs" id="csDiagram"></div>
+      <div class="inspect" id="csText"></div>
+    </div>
+    <div class="panel">
+      <div class="method">
+        <h3>Client-side processing (JavaScript in the browser)</h3>
+        <ul>
+          <li>Runs on the user's computer, so it responds instantly and works without a round trip to the server.</li>
+          <li>Reduces the load on the server and the amount of data sent across the network.</li>
+          <li>Can check a form before it is sent (validation), change the page, respond to clicks.</li>
+          <li>But: the user can read, change or switch off the script, so it cannot be trusted for security, and it cannot reach the server's database directly.</li>
+          <li>Different browsers may behave differently.</li>
+        </ul>
+      </div>
+      <div class="method">
+        <h3>Server-side processing (code on the web server, e.g. Python, PHP)</h3>
+        <ul>
+          <li>Runs on the server, so the user never sees the code and cannot change it: suitable for passwords, payments, anything that must be trusted.</li>
+          <li>Can access databases and files on the server and keep data consistent for every user.</li>
+          <li>Does not depend on the user's browser or device.</li>
+          <li>But: every request travels across the network, so it is slower, and a busy site puts heavy load on the server.</li>
+        </ul>
+      </div>
+      <div class="method">
+        <h3>The point examiners want</h3>
+        <ul>
+          <li>Validate on the client for speed and a better user experience, <b>and</b> again on the server because client-side checks can be bypassed.</li>
+          <li>Searching a database, logging in and storing an order must be server-side. Checking an email address has an @ or a field is not empty can be client-side.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Exam -->
+  <section class="tab wide" id="tab-exam" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Exam-style questions</h2><span class="hint">In the style of OCR H446 papers. Reveal each answer to self-mark against the mark points.</span></div>
+      <div id="examList" style="display:grid;gap:12px"></div>
+    </div>
+  </section>
+
+  <!-- Quiz -->
+  <section class="tab" id="tab-quiz" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Quick quiz</h2>
+        <select id="qType" aria-label="Question type"><option value="mix">Mixed</option><option value="tag">Which tag?</option><option value="sel">Which selector?</option><option value="js">What does the JavaScript do?</option><option value="side">Client or server?</option></select>
+      </div>
+      <p class="hint">Auto-marked. Type tags without the angle brackets, for example <code>img</code>.</p>
+      <div class="controls"><button class="btn primary" id="newQ" type="button">New question</button><span class="score" id="pScore">Score: 0 / 0</span></div>
+    </div>
+    <div class="panel">
+      <div class="q-prompt" id="qPrompt">Press <b>New question</b> to start.</div>
+      <form id="qForm" autocomplete="off" hidden>
+        <div class="q-fields" id="qFields"></div>
+        <div class="controls" style="margin-top:10px"><button class="btn primary" type="submit">Check</button><button class="btn" type="button" id="qReveal">Show answer</button></div>
+      </form>
+      <div class="fb" id="qFb" role="status"></div>
+    </div>
+  </section>
+
+  <details class="tips">
+    <summary>Exam tips and common mistakes</summary>
+    <ul>
+      <li><b>Match the ids.</b> The id in <code>getElementById("result")</code> must be exactly the id in the HTML, including case. A mismatch returns <code>null</code> and the script stops with an error.</li>
+      <li><b>Inputs give strings.</b> <code>.value</code> is text. Convert with <code>parseInt()</code> or <code>parseFloat()</code> before doing arithmetic, or "12" + "3" becomes "123".</li>
+      <li><b>Put the function somewhere it can be called.</b> Define it in the <code>&lt;script&gt;</code> and call it from <code>onclick="name()"</code> with the brackets.</li>
+      <li><b>Brackets and braces.</b> Every <code>(</code> needs a <code>)</code>, every <code>{</code> a <code>}</code>. Statements end with a semicolon. Markers forgive small slips but not a missing block.</li>
+      <li><b>Closing tags.</b> <code>&lt;p&gt;</code>, <code>&lt;h1&gt;</code>, <code>&lt;a&gt;</code>, <code>&lt;div&gt;</code>, <code>&lt;li&gt;</code>, <code>&lt;ul&gt;</code>, <code>&lt;form&gt;</code> all need closing. <code>&lt;img&gt;</code> and <code>&lt;input&gt;</code> do not.</li>
+      <li><b>Selectors.</b> A full stop for a class (<code>.note</code>), a hash for an id (<code>#box</code>), nothing for an element (<code>p</code>). Property and value are separated by a colon and end with a semicolon.</li>
+      <li><b>Say where the CSS lives.</b> "External stylesheet linked with &lt;link&gt; in the head" is the phrase.</li>
+      <li><b>Client versus server.</b> Give a reason, not just a name: "server-side, because the password must be checked where the user cannot see or change the code".</li>
+      <li><b>Not examined here:</b> frameworks, CSS layout, JavaScript arrays and loops in detail, server languages themselves. The HTML and CSS lists above are the whole specification list.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const G = { quiz: false, score: [0, 0] };
+  const LOGO = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="14" fill="#2459c4"/><text x="40" y="52" font-family="Arial" font-size="34" font-weight="700" fill="#fff" text-anchor="middle">&lt;/&gt;</text></svg>');
+
+  /* ---------- Syntax colouring ---------- */
+  function hiHTML(line) {
+    let h = esc(line);
+    h = h.replace(/(&lt;\/?)([a-zA-Z0-9]+)/g, '$1<span class="tg">$2</span>');
+    h = h.replace(/\s([a-zA-Z-]+)(=)(&quot;.*?&quot;)/g, ' <span class="at">$1</span>$2<span class="st">$3</span>');
+    h = h.replace(/(&lt;!--.*?--&gt;)/g, '<span class="cm">$1</span>');
+    return h;
+  }
+  function hiCSS(line) { let h = esc(line); h = h.replace(/^(\s*)([^{}:]+)(\s*\{)/, '$1<span class="at">$2</span>$3'); h = h.replace(/^(\s+)([a-z-]+)(:)/, '$1<span class="tg">$2</span>$3'); return h; }
+  function hiJS(line) { let h = esc(line); h = h.replace(/(&quot;.*?&quot;|'.*?')/g, '<span class="st">$1</span>'); h = h.replace(/\b(var|let|function|if|else|return|document|alert|parseInt|parseFloat)\b/g, '<span class="kw">$1</span>'); h = h.replace(/(\/\/.*)$/, '<span class="cm">$1</span>'); return h; }
+  const codeBlock = (lines, hi, cls = {}) => `<pre class="code">${lines.map((l, i) => `<span class="ln${cls[i] ? ' ' + cls[i] : ''}">${hi(l) || ' '}</span>`).join('')}</pre>`;
+  const linesHTML = (lines, hi, cls = {}) => lines.map((l, i) => `<span class="ln${cls[i] ? ' ' + cls[i] : ''}" data-i="${i}">${hi(l) || ' '}</span>`).join('');
+
+  /* ---------- Sample page used by the anatomy and CSS tabs ---------- */
+  const SAMPLE_HTML = ['<html>', '  <head>', '    <title>Jersey Coding Club</title>', '    <link rel="stylesheet" href="styles.css">', '  </head>', '  <body>', '    <h1 id="title">Jersey Coding Club</h1>', '    <img src="logo.png" alt="Club logo" width="60" height="60">', '    <p class="note">We meet every Tuesday in room 12.</p>', '    <ul>', '      <li>Beginners</li>', '      <li>Python</li>', '      <li class="note">Web pages</li>', '    </ul>', '    <div id="box">', '      <p>Members this term: <span id="count">24</span></p>', '      <a href="https://example.com/join">Join the club</a>', '    </div>', '    <form>', '      <input type="text" id="name" value="">', '      <input type="submit" value="Sign up">', '    </form>', '  </body>', '</html>'];
+  const SAMPLE_CSS = [['body', 'font-family: Arial, sans-serif;'], ['h1', 'color: #2459c4;'], ['.note', 'background-color: #fff3c4;'], ['#box', 'border-width: 2px; border-style: solid; border-color: #0b8587; width: 260px;']];
+  const SAMPLE_CSS_LINES = SAMPLE_CSS.flatMap(([s, d]) => [`${s} {`, ...d.split(';').filter(x => x.trim()).map(x => `  ${x.trim()};`), '}']);
+  // Rendered elements: tag, attributes, text, the line in SAMPLE_HTML
+  const SAMPLE_DOM = `<h1 id="title" data-line="6" data-pick="1">Jersey Coding Club</h1><img src="${LOGO}" alt="Club logo" width="60" height="60" data-line="7" data-pick="1"><p class="note" data-line="8" data-pick="1">We meet every Tuesday in room 12.</p><ul data-line="9" data-pick="1"><li data-line="10" data-pick="1">Beginners</li><li data-line="11" data-pick="1">Python</li><li class="note" data-line="12" data-pick="1">Web pages</li></ul><div id="box" data-line="14" data-pick="1"><p data-line="15" data-pick="1">Members this term: <span id="count" data-line="15" data-pick="1">24</span></p><a href="#" data-line="16" data-pick="1" onclick="return false">Join the club</a></div><form data-line="18" data-pick="1" onsubmit="return false"><input type="text" id="name" value="" data-line="19" data-pick="1"> <input type="submit" value="Sign up" data-line="20" data-pick="1"></form>`;
+  function applySampleCSS(scope, rules) { return rules.map(([s, d]) => `${scope} ${s.split(',').map(x => x.trim()).join(`, ${scope} `)} { ${d} }`).join('\n'); }
+  const anStyle = document.createElement('style'); document.head.appendChild(anStyle);
+  anStyle.textContent = applySampleCSS('#anPage', SAMPLE_CSS).replace(/#anPage body/g, '#anPage');
+
+  /* ---------- Anatomy tab ---------- */
+  function renderAnatomy(pickLine, el) {
+    const cls = {}; if (pickLine !== undefined) cls[pickLine] = 'hl';
+    $('#anHtml').innerHTML = linesHTML(SAMPLE_HTML, hiHTML, cls);
+    const cssCls = {};
+    if (el) { let i = 0; SAMPLE_CSS.forEach(([s, d]) => { const n = 2 + d.split(';').filter(x => x.trim()).length; const matches = s === 'body' || el.matches(s); if (matches) for (let k = 0; k < n; k++) cssCls[i + k] = 'hlc'; i += n; }); }
+    $('#anCss').innerHTML = linesHTML(SAMPLE_CSS_LINES, hiCSS, cssCls);
+    if (!el) { $('#anInspect').innerHTML = `<div class="row" style="--tc:var(--ink-soft)"><b>Nothing selected</b>Click an element in the page above.</div>`; return; }
+    const tag = el.tagName.toLowerCase(); const id = el.id, klass = el.getAttribute('class');
+    const rules = SAMPLE_CSS.filter(([s]) => s === 'body' || el.matches(s)).map(([s, d]) => `${s} { ${d} }`);
+    const attrs = [...el.attributes].filter(a => !a.name.startsWith('data-') && a.name !== 'onclick' && a.name !== 'onsubmit').map(a => `${a.name}="${a.name === 'src' ? 'logo.png' : a.name === 'href' ? 'https://example.com/join' : a.value}"`);
+    $('#anInspect').innerHTML = `<div class="row" style="--tc:var(--html)"><b>HTML</b>This is a <code>&lt;${tag}&gt;</code> element${attrs.length ? ` with attributes <code>${esc(attrs.join(' '))}</code>` : ''}. ${TAGINFO[tag] || ''}</div>
+      <div class="row" style="--tc:var(--css)"><b>CSS rules that apply</b>${rules.length ? rules.map(r => `<code>${esc(r)}</code>`).join('<br>') : 'No rule targets it directly.'}${klass ? ` It has class <code>${klass}</code>, matched by the <code>.${klass}</code> selector.` : ''}${id ? ` Its id <code>${id}</code> would be matched by <code>#${id}</code>.` : ''} Text colour and font are inherited from <code>body</code>.</div>
+      <div class="row" style="--tc:var(--js)"><b>Reaching it from JavaScript</b>${id ? `<code>document.getElementById("${id}")</code> returns this element. Then <code>.innerHTML</code> reads or replaces its content${tag === 'input' ? ', and <code>.value</code> reads what the user typed' : ''}.` : `It has no <code>id</code>, so <code>getElementById</code> cannot find it. Give it one (<code>id="…"</code>) to use it from a script.`}</div>`;
+  }
+  const TAGINFO = { h1: 'The main heading. h2 to h6 are smaller sub-headings.', img: 'An image. src says where the file is, alt describes it, width and height size it in pixels. No closing tag.', p: 'A paragraph of text.', ul: 'An unordered (bulleted) list; ol would be numbered.', li: 'One list item.', div: 'A container used to group elements so they can be styled or found together.', span: 'An inline container for a piece of text within a line.', a: 'A hyperlink; href is the destination.', form: 'Groups inputs that are sent together.', input: 'A control the user interacts with. type decides which: text box, submit button, and so on.' };
+  $('#anPage').innerHTML = SAMPLE_DOM;
+  $('#anPage').addEventListener('click', ev => { const el = ev.target.closest('[data-pick]'); if (!el) return; ev.preventDefault(); document.querySelectorAll('#anPage .picked').forEach(x => x.classList.remove('picked')); el.classList.add('picked'); renderAnatomy(+el.dataset.line, el); });
+  renderAnatomy();
+
+  /* ---------- HTML tag cards ---------- */
+  const TAGS = [
+    ['html, head, body', 'The skeleton. head holds information about the page; body holds what is shown.', ['<html>', '  <head>', '    <title>My page</title>', '  </head>', '  <body>', '    …content…', '  </body>', '</html>'], '<em>(the browser tab shows the title; the body is the page)</em>'],
+    ['title', 'The text shown in the browser tab and in search results. Goes in the head.', ['<title>Jersey Coding Club</title>'], '<em>tab:</em> Jersey Coding Club'],
+    ['link', 'Attaches an external stylesheet. Goes in the head. No closing tag.', ['<link rel="stylesheet" href="styles.css">'], '<em>(nothing visible; the CSS file is loaded)</em>'],
+    ['h1 … h6', 'Headings, h1 largest. Use them in order.', ['<h1>Main heading</h1>', '<h2>Sub heading</h2>'], '<h1 style="font-size:1.4em">Main heading</h1><h2 style="font-size:1.1em">Sub heading</h2>'],
+    ['p', 'A paragraph.', ['<p>We meet on Tuesdays.</p>'], '<p>We meet on Tuesdays.</p>'],
+    ['a', 'A hyperlink. href is where it goes; the text between the tags is what you click.', ['<a href="https://ocr.org.uk">OCR website</a>'], '<a href="#" onclick="return false">OCR website</a>'],
+    ['img', 'An image. src, alt, width and height. No closing tag.', ['<img src="logo.png" alt="Club logo"', '     width="40" height="40">'], `<img src="${LOGO}" alt="Club logo" width="40" height="40">`],
+    ['div', 'A box that groups other elements, usually with an id or class so it can be styled or found.', ['<div id="box">', '  <p>Inside the box</p>', '</div>'], '<div style="border:1px solid #0b8587;padding:4px"><p>Inside the box</p></div>'],
+    ['ul, ol, li', 'Lists: ul is bulleted, ol is numbered; each item is an li.', ['<ul>', '  <li>Beginners</li>', '  <li>Python</li>', '</ul>', '<ol>', '  <li>First</li>', '  <li>Second</li>', '</ol>'], '<ul style="margin:2px 0 2px 18px"><li>Beginners</li><li>Python</li></ul><ol style="margin:2px 0 2px 18px"><li>First</li><li>Second</li></ol>'],
+    ['form and input', 'A form groups inputs. type="text" is a box to type in; type="submit" is a button that sends the form. name and value label the data.', ['<form>', '  <input type="text" name="user" value="">', '  <input type="submit" value="Go">', '</form>'], '<form onsubmit="return false"><input type="text" name="user" value=""> <input type="submit" value="Go"></form>'],
+    ['script', 'Holds JavaScript, or loads it from a file with src. Usually at the end of the body or in the head.', ['<script>', '  function hello() {', '    alert("Hi");', '  }', '<\/script>'], '<em>(nothing visible until the function is called)</em>'],
+    ['id and class attributes', 'id: a unique label for one element (for JavaScript and #id CSS). class: a label many elements can share (for .class CSS).', ['<p id="intro" class="note">…</p>'], '<p style="background:#fff3c4">A paragraph with id intro and class note</p>']
+  ];
+  $('#tagcards').innerHTML = TAGS.map(([n, d, code, demo]) => `<div class="tagcard"><h3>&lt;${esc(n)}&gt;</h3><p>${d}</p>${codeBlock(code, hiHTML)}<div class="demo">${demo}</div></div>`).join('');
+
+  /* ---------- CSS tab ---------- */
+  const cssStyle = document.createElement('style'); document.head.appendChild(cssStyle);
+  let RULES = [['h1', 'color', '#2459c4']];
+  $('#cssPage').innerHTML = SAMPLE_DOM.replace(/ data-pick="1"/g, '');
+  function renderRules(hover) {
+    const lines = []; RULES.forEach(([s, p, v]) => { lines.push(`${s} {`, `  ${p}: ${v};`, '}'); });
+    $('#cssOut').innerHTML = lines.length ? linesHTML(lines, hiCSS) : '<span class="ln cm">/* no rules yet */</span>';
+    cssStyle.textContent = RULES.map(([s, p, v]) => `#cssPage ${s === 'body' ? '' : s} { ${p}: ${v}; }`).join('\n');
+    document.querySelectorAll('#cssOut .ln').forEach((ln, i) => { const r = Math.floor(i / 3); ln.addEventListener('mouseenter', () => showMatch(r)); ln.addEventListener('mouseleave', () => showMatch(-1)); });
+    showMatch(-1);
+  }
+  function showMatch(r) {
+    document.querySelectorAll('#cssPage .cssmatch').forEach(x => x.classList.remove('cssmatch'));
+    if (r < 0 || !RULES[r]) { $('#cssMatch').textContent = RULES.length ? 'Hover a rule on the left to see which elements it matches.' : 'Add a rule to begin.'; return; }
+    const s = RULES[r][0];
+    const els = s === 'body' ? [$('#cssPage')] : [...$('#cssPage').querySelectorAll(s)];
+    els.forEach(e => e.classList.add('cssmatch'));
+    const kind = s.startsWith('.') ? 'class selector' : s.startsWith('#') ? 'id selector' : 'element selector';
+    $('#cssMatch').innerHTML = `<code>${esc(s)}</code> is ${kind === 'id selector' ? 'an' : 'a'} <b>${kind}</b>: it matches ${els.length} element${els.length === 1 ? '' : 's'}${s === 'body' ? ' (everything inherits from it)' : ''}.`;
+  }
+  $('#rbAdd').addEventListener('click', () => {
+    const s = $('#rbSel').value, p = $('#rbProp').value, v = $('#rbVal').value.trim();
+    if (!v || /[;{}<>]/.test(v)) { $('#rbMsg').textContent = 'Enter a value such as red, 20px, Arial or #2459c4.'; return; }
+    $('#rbMsg').textContent = ''; RULES.push([s, p, v]); renderRules();
+  });
+  $('#rbClear').addEventListener('click', () => { RULES = []; renderRules(); });
+  $('#rbProp').addEventListener('change', () => { const d = { color: 'red', 'background-color': 'yellow', 'font-family': 'Arial', 'font-size': '24px', 'border-width': '3px', 'border-style': 'dashed', 'border-color': 'green', width: '300px', height: '80px' }; $('#rbVal').value = d[$('#rbProp').value]; });
+  renderRules();
+
+  /* ---------- JavaScript playground ---------- */
+  const PRESETS = [
+    { name: '1. Say hello', hint: 'Read the name from the box and show a greeting in the paragraph.', html: ['<p>Your name: <input type="text" id="name"></p>', '<button onclick="greet()">Say hello</button>', '<p id="result"></p>'], css: ['#result { color: #2459c4; font-size: 20px; }'], js: ['function greet() {', '  // 1. read the name from the input', '  // 2. write "Hello, <name>!" into the result paragraph', '}'], sol: ['function greet() {', '  var name = document.getElementById("name").value;', '  document.getElementById("result").innerHTML = "Hello, " + name + "!";', '}'] },
+    { name: '2. Add two numbers', hint: 'The exam favourite. Watch what happens if you forget parseInt.', html: ['<input type="text" id="a"> + <input type="text" id="b">', '<button onclick="add()">=</button>', '<p id="result"></p>'], css: [], js: ['function add() {', '  var a = document.getElementById("a").value;', '  var b = document.getElementById("b").value;', '  var total = a + b;', '  document.getElementById("result").innerHTML = total;', '}'], sol: ['function add() {', '  var a = parseInt(document.getElementById("a").value);', '  var b = parseInt(document.getElementById("b").value);', '  var total = a + b;', '  document.getElementById("result").innerHTML = total;', '}'] },
+    { name: '3. Celsius to Fahrenheit', hint: 'Fahrenheit = Celsius × 9 / 5 + 32. Show one decimal place if you like.', html: ['<p>Celsius: <input type="text" id="c"></p>', '<button onclick="convert()">Convert</button>', '<p id="result"></p>'], css: [], js: ['function convert() {', '', '}'], sol: ['function convert() {', '  var c = parseFloat(document.getElementById("c").value);', '  var f = c * 9 / 5 + 32;', '  document.getElementById("result").innerHTML = c + " C is " + f + " F";', '}'] },
+    { name: '4. Validate an empty field', hint: 'If the box is empty, show an alert; otherwise confirm the entry in the page.', html: ['<p>Email: <input type="text" id="email"></p>', '<button onclick="check()">Submit</button>', '<p id="result"></p>'], css: [], js: ['function check() {', '  var email = document.getElementById("email").value;', '  // if email is "" then alert, else show "Thanks, " + email', '}'], sol: ['function check() {', '  var email = document.getElementById("email").value;', '  if (email == "") {', '    alert("Please enter your email address");', '  } else {', '    document.getElementById("result").innerHTML = "Thanks, " + email;', '  }', '}'] },
+    { name: '5. Count the clicks', hint: 'A variable declared outside the function keeps its value between clicks.', html: ['<button onclick="count()">Click me</button>', '<p>Clicks: <span id="n">0</span></p>'], css: [], js: ['var clicks = 0;', 'function count() {', '  clicks = clicks + 1;', '  document.getElementById("n").innerHTML = clicks;', '}'], sol: ['var clicks = 0;', 'function count() {', '  clicks = clicks + 1;', '  document.getElementById("n").innerHTML = clicks;', '}'] },
+    { name: '6. Change a style', hint: 'JavaScript can change CSS properties through .style. Property names lose their hyphen: background-color becomes backgroundColor.', html: ['<p id="msg">Warning: low battery</p>', '<button onclick="warn()">Make it red</button>'], css: ['#msg { font-size: 18px; }'], js: ['function warn() {', '', '}'], sol: ['function warn() {', '  document.getElementById("msg").style.color = "red";', '  document.getElementById("msg").style.backgroundColor = "yellow";', '}'] },
+    { name: '7. Find the bugs', hint: 'This should double the number but has three mistakes. Fix them and Run. The console tells you what went wrong.', html: ['<input type="text" id="num">', '<button onclick="double()">Double it</button>', '<p id="answer"></p>'], css: [], js: ['function double() {', '  var n = document.getElementById("number").value;', '  var d = n * 2', '  document.getElementById("result").innerHTML = d;', '}'], sol: ['function double() {', '  var n = parseInt(document.getElementById("num").value);', '  var d = n * 2;', '  document.getElementById("answer").innerHTML = d;', '}'] }
+  ];
+  PRESETS.forEach((p, i) => { const o = document.createElement('option'); o.value = i; o.textContent = p.name; $('#preset').appendChild(o); });
+  const jsStyle = document.createElement('style'); document.head.appendChild(jsStyle);
+  let FNS = {};
+  function loadPreset(i, sol) { const p = PRESETS[i]; $('#presetHint').textContent = p.hint; $('#edHtml').value = p.html.join('\n'); $('#edCss').value = p.css.join('\n'); $('#edJs').value = (sol ? p.sol : p.js).join('\n'); $('#jsConsole').innerHTML = ''; $('#jsMsg').textContent = ''; $('#jsPage').innerHTML = '<p style="color:#888">Press Run to load your HTML.</p>'; }
+  $('#preset').addEventListener('change', ev => loadPreset(+ev.target.value));
+  $('#resetBtn').addEventListener('click', () => loadPreset(+$('#preset').value));
+  $('#solBtn').addEventListener('click', () => { loadPreset(+$('#preset').value, true); run(); });
+  const log = (html, cls = '') => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; $('#jsConsole').appendChild(d); $('#jsConsole').scrollTop = 1e6; };
+  function scopeCSS(css) { return css.replace(/\/\*[\s\S]*?\*\//g, '').split('}').map(chunk => { const i = chunk.indexOf('{'); if (i < 0) return ''; const sel = chunk.slice(0, i).trim(), body = chunk.slice(i + 1); if (!sel) return ''; return sel.split(',').map(s => `#jsPage ${s.trim()}`).join(', ') + ' {' + body + '}'; }).join('\n'); }
+  function wrapEl(el, id) {
+    return new Proxy(el, {
+      get(t, k) { const v = t[k]; if (k === 'value') log(`<span class="note">read</span> #${id}.value → <b>${esc(JSON.stringify(v))}</b> (a string)`, 'ok'); else if (k === 'innerHTML') log(`read #${id}.innerHTML → ${esc(JSON.stringify(v))}`, 'ok'); return typeof v === 'function' ? v.bind(t) : v; },
+      set(t, k, v) { if (k === 'innerHTML') log(`<span class="note">write</span> #${id}.innerHTML = <b>${esc(JSON.stringify(String(v)))}</b> → the page re-renders`, 'ok'); else if (k === 'value') log(`write #${id}.value = ${esc(JSON.stringify(String(v)))}`, 'ok'); else log(`set #${id}.${esc(String(k))}`, 'ok'); t[k] = v; return true; }
+    });
+  }
+  function makeDoc() {
+    return {
+      getElementById(id) { const el = $('#jsPage').querySelector('#' + CSS.escape(String(id))); if (!el) { log(`document.getElementById(${esc(JSON.stringify(id))}) → <b>null</b>: no element in the HTML has id="${esc(id)}"`, 'bad'); return null; } log(`document.getElementById(${esc(JSON.stringify(id))}) → found &lt;${el.tagName.toLowerCase()}&gt;`, 'ok'); return wrapEl(el, id); },
+      write(s) { $('#jsPage').insertAdjacentHTML('beforeend', String(s)); log(`document.write(${esc(JSON.stringify(String(s)))})`, 'ok'); }
+    };
+  }
+  function fakeAlert(msg) { const host = $('#alertHost'); host.hidden = false; host.innerHTML = `<div class="alertbox"><div class="ttl">This page says</div><div>${esc(String(msg))}</div><button type="button">OK</button></div>`; host.querySelector('button').addEventListener('click', () => { host.hidden = true; host.innerHTML = ''; }); log(`alert(${esc(JSON.stringify(String(msg)))}) → message box shown`, 'ok'); }
+  function explainError(e) {
+    const m = String(e && e.message || e);
+    let hint = '';
+    if (/is not defined/.test(m)) hint = ' The name was never declared: check the spelling, and that the function is defined in the JavaScript pane with that exact name.';
+    else if (/null/.test(m) && /(innerHTML|value|style)/.test(m)) hint = ' getElementById returned null, so there is nothing to set. The id in the script does not match any id in the HTML.';
+    else if (/Unexpected|missing|Invalid|Unterminated/.test(m)) hint = ' A syntax error: look for a missing bracket, brace, quote or semicolon.';
+    else if (/is not a function/.test(m)) hint = ' Something is being called with brackets that is not a function.';
+    return `<b>Error:</b> ${esc(m)}.${hint}`;
+  }
+  function run() {
+    $('#jsConsole').innerHTML = ''; $('#jsMsg').textContent = ''; $('#alertHost').hidden = true;
+    const html = $('#edHtml').value.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/\son([a-z]+)="/gi, ' data-on$1="').replace(/\son([a-z]+)='/gi, " data-on$1='");
+    $('#jsPage').innerHTML = html;
+    $('#jsPage').querySelectorAll('form').forEach(f => f.addEventListener('submit', ev => ev.preventDefault()));
+    jsStyle.textContent = scopeCSS($('#edCss').value);
+    log('page loaded: HTML parsed, CSS applied', 'ev');
+    const code = $('#edJs').value;
+    const names = [...code.matchAll(/function\s+([A-Za-z_$][\w$]*)\s*\(/g)].map(m => m[1]);
+    FNS = {};
+    try {
+      const f = new Function('document', 'alert', 'console', code + `\n;return {${names.join(',')}};`);
+      FNS = f(makeDoc(), fakeAlert, { log: (...a) => log('console.log: ' + esc(a.join(' ')), 'ok') });
+      log(`script run: ${names.length ? 'defined function' + (names.length > 1 ? 's ' : ' ') + names.map(n => `<b>${n}()</b>`).join(', ') + ' (not called yet)' : 'no functions defined'}`, 'ev');
+    } catch (e) { log(explainError(e), 'bad'); $('#jsMsg').textContent = 'The script did not load. See the console.'; }
+  }
+  $('#jsPage').addEventListener('click', ev => {
+    const el = ev.target.closest('[data-onclick]'); if (!el) return; ev.preventDefault();
+    const handler = el.getAttribute('data-onclick');
+    log(`click on &lt;${el.tagName.toLowerCase()}&gt; → onclick runs: <b>${esc(handler)}</b>`, 'ev');
+    try { const f = new Function('document', 'alert', 'fns', `with (fns) { ${handler} }`); f(makeDoc(), fakeAlert, FNS); } catch (e) { log(explainError(e), 'bad'); }
+  });
+  $('#runBtn').addEventListener('click', run);
+  document.addEventListener('keydown', ev => { if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter' && curTab === 'js') { ev.preventDefault(); run(); } });
+  loadPreset(0);
+
+  /* ---------- Walkthrough component ---------- */
+  function makeWalkthrough(root, opts = {}) {
+    root.innerHTML = `<div class="controls"><button class="btn primary" data-act="next" type="button">Next step <kbd>→</kbd></button><button class="btn" data-act="finish" type="button">Run to the end</button><button class="btn" data-act="reset" type="button">Restart</button></div>
+      <div class="narration" aria-live="polite"><div class="narr-top"><span class="stage-tag ready">Ready</span><span class="step-count"></span></div><h3 class="step-title"></h3><div class="step-text"></div>
+      <div class="ask" hidden><p class="qq"></p><form autocomplete="off"><input type="text" aria-label="Your answer" spellcheck="false"><button class="btn primary" type="submit">Check</button><button class="btn" type="button" data-act="show">Show me</button></form><div class="fb" role="status"></div></div></div>
+      <div class="work"></div>`;
+    const el = { next: root.querySelector('[data-act="next"]'), finish: root.querySelector('[data-act="finish"]'), reset: root.querySelector('[data-act="reset"]'), tag: root.querySelector('.stage-tag'), count: root.querySelector('.step-count'), title: root.querySelector('.step-title'), text: root.querySelector('.step-text'), ask: root.querySelector('.ask'), qq: root.querySelector('.qq'), form: root.querySelector('form'), input: root.querySelector('input'), show: root.querySelector('[data-act="show"]'), fb: root.querySelector('.fb'), work: root.querySelector('.work') };
+    const w = { steps: [], i: -1, pending: null, intro: '' };
+    function buttons() { const done = w.i >= w.steps.length - 1; el.next.disabled = done || !w.steps.length; el.finish.disabled = done || !w.steps.length; el.reset.disabled = w.i < 0; }
+    function showIntro() { el.tag.textContent = 'Ready'; el.tag.className = 'stage-tag ready'; el.count.textContent = w.steps.length ? `${w.steps.length} steps` : ''; el.title.textContent = 'Press Next step to begin'; el.text.innerHTML = w.intro; el.work.innerHTML = ''; el.ask.hidden = true; w.pending = null; if (opts.onStep) opts.onStep(null); buttons(); }
+    function reveal(st) { w.i++; const last = w.i === w.steps.length - 1; el.tag.textContent = last ? 'Done' : `Step ${w.i + 1}`; el.tag.className = 'stage-tag' + (last ? ' done' : ''); el.count.textContent = `${w.i + 1} of ${w.steps.length}`; el.title.textContent = st.title; el.text.innerHTML = st.text; el.work.innerHTML = st.work || ''; if (opts.onStep) opts.onStep(st); buttons(); }
+    function next() { if (w.pending) { el.input.focus(); return; } const st = w.steps[w.i + 1]; if (!st) return; if (G.quiz && st.q) { w.pending = st; el.qq.textContent = st.q.q; el.input.value = ''; el.fb.textContent = ''; el.fb.className = 'fb'; el.ask.hidden = false; el.input.focus({ preventScroll: true }); } else reveal(st); }
+    el.form.addEventListener('submit', ev => { ev.preventDefault(); if (!w.pending) return; const ok = checkAnswer(el.input.value, w.pending.q); if (ok) { G.score[0]++; G.score[1]++; renderScore(); el.fb.textContent = 'Correct.'; el.fb.className = 'fb ok'; const st = w.pending; w.pending = null; setTimeout(() => { el.ask.hidden = true; reveal(st); }, 450); } else { el.fb.textContent = 'Not quite. Try again, or press Show me.'; el.fb.className = 'fb bad'; } });
+    el.show.addEventListener('click', () => { if (!w.pending) return; G.score[1]++; renderScore(); const st = w.pending; w.pending = null; el.ask.hidden = true; reveal(st); });
+    el.next.addEventListener('click', next);
+    el.finish.addEventListener('click', () => { w.pending = null; el.ask.hidden = true; while (w.i < w.steps.length - 1) reveal(w.steps[w.i + 1]); });
+    el.reset.addEventListener('click', () => { w.i = -1; showIntro(); });
+    return { load(steps, intro = '') { w.steps = steps || []; w.i = -1; w.intro = intro; showIntro(); }, next };
+  }
+  function checkAnswer(given, qd) {
+    const g = String(given).trim().toLowerCase().replace(/^<|>$/g, '').replace(/^"|"$/g, ''); const a = String(qd.a).toLowerCase();
+    if (qd.kind === 'num') { const n = Number(g); return g !== '' && isFinite(n) && Math.abs(n - Number(qd.a)) < 1e-9; }
+    return g === a || (qd.alt || []).map(x => x.toLowerCase()).includes(g);
+  }
+  function renderScore() { $('#score').textContent = `${G.score[0]} / ${G.score[1]}`; $('#scoreBox').hidden = !G.quiz; }
+  $('#quizOn').addEventListener('change', ev => { G.quiz = ev.target.checked; renderScore(); });
+
+  /* ---------- Trace tab ---------- */
+  const TR_HTML = ['<html>', '  <head>', '    <title>Adder</title>', '    <script src="adder.js"><\/script>', '  </head>', '  <body>', '    <input type="text" id="num1">', '    <input type="text" id="num2">', '    <button onclick="add()">Add</button>', '    <p id="result"></p>', '  </body>', '</html>'];
+  const TR_JS = ['function add() {', '  var a = parseInt(document.getElementById("num1").value);', '  var b = parseInt(document.getElementById("num2").value);', '  var total = a + b;', '  document.getElementById("result").innerHTML = "Total: " + total;', '}'];
+  const trPageHTML = (v1, v2, res) => `<input type="text" id="t1" value="${v1}" readonly> <input type="text" id="t2" value="${v2}" readonly> <button type="button">Add</button><p id="tres" style="margin:6px 0 0;min-height:1.2em">${esc(res)}</p>`;
+  const WTt = makeWalkthrough($('#wt-trace'), { onStep: st => { const h = {}, j = {}; if (st) { if (st.h !== undefined) h[st.h] = 'hl'; if (st.j !== undefined) j[st.j] = 'cur'; } $('#trHtml').innerHTML = linesHTML(TR_HTML, hiHTML, h); $('#trJs').innerHTML = linesHTML(TR_JS, hiJS, j); $('#trPage').innerHTML = trPageHTML(st ? st.v1 : '', st ? st.v2 : '', st ? st.res : ''); } });
+  const vars = o => `<div class="vars">${Object.entries(o).map(([k, v]) => `<span>${k} = <b>${esc(String(v))}</b></span>`).join('')}</div>`;
+  WTt.load([
+    { h: 3, title: 'The page loads and the script is read', text: `The browser reads the HTML from top to bottom. In the head it finds <code>&lt;script src="adder.js"&gt;</code>, fetches the file and runs it. The file only <em>defines</em> the function <code>add</code>; nothing inside it runs yet.`, v1: '', v2: '', res: '' },
+    { h: 6, title: 'The body is built', text: `Two text inputs, a button and an empty paragraph are created. Each has an <code>id</code> so the script can find it later. The paragraph shows nothing because it has no content.`, v1: '', v2: '', res: '', q: { q: 'What attribute lets JavaScript find a particular element?', a: 'id' } },
+    { h: 7, title: 'The user types two numbers', text: `The user enters 12 and 30. Nothing happens yet: no code runs until an event fires.`, v1: '12', v2: '30', res: '' },
+    { h: 8, j: 0, title: 'Click: the onclick event fires', text: `Clicking the button triggers its <code>onclick</code> attribute, which calls <code>add()</code>. Execution jumps into the function. This is client-side: it all happens inside the browser, with no request to a server.`, v1: '12', v2: '30', res: '', q: { q: 'Which function is called when the button is clicked?', a: 'add', alt: ['add()'] } },
+    { h: 6, j: 1, title: 'Read the first input', text: `<code>document.getElementById("num1")</code> finds the first text box. <code>.value</code> gives what was typed, the <b>string</b> "12". <code>parseInt</code> converts it to the number 12, stored in <code>a</code>.`, v1: '12', v2: '30', res: '', work: vars({ a: 12 }), q: { q: 'Before parseInt, is "12" a string or a number?', a: 'string' } },
+    { h: 7, j: 2, title: 'Read the second input', text: `The same for the second box: "30" becomes the number 30 in <code>b</code>.`, v1: '12', v2: '30', res: '', work: vars({ a: 12, b: 30 }) },
+    { j: 3, title: 'Do the calculation', text: `<code>total = a + b</code> = 12 + 30 = <b>42</b>. Because both are numbers, + adds. Without parseInt it would have joined the strings to give "1230".`, v1: '12', v2: '30', res: '', work: vars({ a: 12, b: 30, total: 42 }), q: { q: 'What would total be without parseInt?', a: '1230' } },
+    { h: 9, j: 4, title: 'Write the answer into the page', text: `<code>getElementById("result")</code> finds the empty paragraph and <code>.innerHTML = "Total: " + total</code> replaces its content with "Total: 42". The browser redraws the page immediately.`, v1: '12', v2: '30', res: 'Total: 42', work: vars({ a: 12, b: 30, total: 42 }) },
+    { j: 5, title: 'The function ends', text: `Execution reaches the closing brace and returns to waiting for the next event. The page keeps showing the result until something changes it. Another click would run <code>add</code> again from the top.`, v1: '12', v2: '30', res: 'Total: 42' }
+  ], 'Nine steps from loading the page to showing the total.');
+
+  /* ---------- Client / server tab ---------- */
+  const CS_TASKS = [
+    { name: 'Check that a form field is not empty', side: 'client', net: 'nothing sent until it passes', why: 'A simple check on what the user typed. Doing it in the browser gives instant feedback and avoids a wasted trip to the server. The server must still check again, because a user can disable JavaScript.' },
+    { name: 'Check a username and password', side: 'server', net: 'username and password sent (over HTTPS); result sent back', why: 'The stored passwords must never leave the server, and the checking code must be where the user cannot read or change it.' },
+    { name: 'Search a product database', side: 'server', net: 'search term sent; matching results sent back', why: 'The database lives on the server. Sending the whole database to the browser would be slow and insecure.' },
+    { name: 'Change a heading colour when a button is clicked', side: 'client', net: 'nothing', why: 'Purely a change to the page the user is looking at. No data or secrets involved, so the browser handles it instantly.' },
+    { name: 'Calculate the total of a shopping basket to display', side: 'client', net: 'nothing (until checkout)', why: 'Fast feedback as items are added. But the server recalculates the real total at checkout: a client-side total can be tampered with.' },
+    { name: 'Save an order and take payment', side: 'server', net: 'order details sent; confirmation sent back', why: 'Must be stored in the database and must be trusted. Payment details are processed where the user cannot interfere.' },
+    { name: 'Check an email address contains an @', side: 'client', net: 'nothing until it passes', why: 'Format checking is quick and helps the user correct typos immediately. Still repeated on the server.' }
+  ];
+  CS_TASKS.forEach((t, i) => { const o = document.createElement('option'); o.value = i; o.textContent = t.name; $('#csTask').appendChild(o); });
+  function renderCS() {
+    const t = CS_TASKS[+$('#csTask').value]; const cli = t.side === 'client';
+    $('#csDiagram').innerHTML = `<svg viewBox="0 0 720 230" role="img" aria-label="Client and server diagram">
+      <rect class="box cli${cli ? ' runs' : ''}" x="20" y="30" width="250" height="170" rx="12"/><text class="lbl" x="145" y="58" text-anchor="middle">Client: the browser</text><text class="sm" x="145" y="78" text-anchor="middle">HTML + CSS + JavaScript</text><text class="sm" x="145" y="96" text-anchor="middle">on the user's computer</text>
+      <rect class="box srv${cli ? '' : ' runs'}" x="450" y="30" width="250" height="170" rx="12"/><text class="lbl" x="575" y="58" text-anchor="middle">Server</text><text class="sm" x="575" y="78" text-anchor="middle">Python, PHP, databases, files</text><text class="sm" x="575" y="96" text-anchor="middle">in the data centre</text>
+      <path class="arrow${cli ? '' : ' on'}" d="M275,110 H445" marker-end="url(#ah)"/><path class="arrow${cli ? '' : ' on'}" d="M445,150 H275"/><text class="mono" x="360" y="100" text-anchor="middle">request →</text><text class="mono" x="360" y="172" text-anchor="middle">← response</text><text class="sm" x="360" y="135" text-anchor="middle">${esc(t.net)}</text>
+      <rect x="${cli ? 60 : 490}" y="120" width="170" height="60" rx="8" fill="${cli ? 'var(--cli)' : 'var(--srv)'}"/><text class="chip" x="${cli ? 145 : 575}" y="145" text-anchor="middle">the code runs here</text><text class="chip" x="${cli ? 145 : 575}" y="165" text-anchor="middle">${cli ? 'client-side' : 'server-side'}</text>
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/></marker></defs></svg>`;
+    $('#csText').innerHTML = `<div class="row" style="--tc:${cli ? 'var(--cli)' : 'var(--srv)'}"><b>${cli ? 'Client-side' : 'Server-side'}</b>${t.why}</div>`;
+  }
+  $('#csTask').addEventListener('change', renderCS); renderCS();
+
+  /* ---------- Exam questions ---------- */
+  const EXAM = [
+    { marks: 3, q: `Write the HTML for a page body containing a main heading "Coding Club", a paragraph "Tuesdays at 3:30" and an image file <code>club.png</code> with suitable alternative text.`, code: ['<body>', '  <h1>Coding Club</h1>', '  <p>Tuesdays at 3:30</p>', '  <img src="club.png" alt="Coding club logo">', '</body>'], hi: 'html', mp: ['h1 with correct text and closing tag (1)', 'p with correct text and closing tag (1)', 'img with src="club.png" and an alt attribute (1)'] },
+    { marks: 2, q: `Describe the purpose of the <code>&lt;head&gt;</code> and <code>&lt;body&gt;</code> sections of an HTML page.`, mp: ['head: information about the page that is not displayed, e.g. the title, links to stylesheets, scripts (1)', 'body: the content that is displayed in the browser window (1)'] },
+    { marks: 3, q: `Write CSS so that: every <code>h1</code> uses the Arial font; elements with the class <code>warning</code> have red text; the element with the id <code>menu</code> is 200 pixels wide.`, code: ['h1 {', '  font-family: Arial;', '}', '.warning {', '  color: red;', '}', '#menu {', '  width: 200px;', '}'], hi: 'css', mp: ['h1 element selector with font-family: Arial (1)', '.warning class selector (full stop) with color: red (1)', '#menu id selector (hash) with width: 200px (1)'] },
+    { marks: 3, q: `A website has 40 pages that share the same style. Explain why an external stylesheet is better than internal CSS on each page.`, mp: ['One file is linked from every page with &lt;link&gt;, so the rules are written once (1)', 'A change to the file changes every page at once, so it is easier to maintain / consistent (1)', 'The browser caches the file, so pages load faster / less data is sent (1)'] },
+    { marks: 5, q: `A web page has a text box with the id <code>num</code>, a button, and a paragraph with the id <code>result</code>. Write JavaScript that, when the button is clicked, doubles the number entered and displays it in the paragraph. Include the HTML for the button.`, code: ['<button onclick="doubleIt()">Double</button>', '', '<script>', '  function doubleIt() {', '    var n = parseInt(document.getElementById("num").value);', '    var d = n * 2;', '    document.getElementById("result").innerHTML = d;', '  }', '<\/script>'], hi: 'js', mp: ['Button with onclick calling a function (1)', 'Function declared with the matching name (1)', 'Reads the input with getElementById("num").value (1)', 'Converts to a number with parseInt/parseFloat and doubles it (1)', 'Writes the result with getElementById("result").innerHTML (1)'] },
+    { marks: 4, q: `Write JavaScript for a function <code>check()</code> that displays an alert saying "Name required" if the text box with id <code>name</code> is empty, and otherwise writes "Welcome " followed by the name into the paragraph with id <code>msg</code>.`, code: ['function check() {', '  var name = document.getElementById("name").value;', '  if (name == "") {', '    alert("Name required");', '  } else {', '    document.getElementById("msg").innerHTML = "Welcome " + name;', '  }', '}'], hi: 'js', mp: ['Reads the value of the name input (1)', 'if comparing the value with "" (1)', 'alert with the correct message in the true branch (1)', 'else branch writing "Welcome " + name into msg with innerHTML (1)'] },
+    { marks: 3, q: `Describe what happens, in order, when the user clicks the button in this code.` + codeBlock(['<input type="text" id="age">', '<button onclick="show()">Go</button>', '<p id="out"></p>', '<script>', '  function show() {', '    var a = document.getElementById("age").value;', '    document.getElementById("out").innerHTML = "You are " + a;', '  }', '<\/script>'], hiHTML), mp: ['The onclick event calls the function show (1)', 'The value typed in the age box is read into the variable a (1)', 'The paragraph out has its content replaced with "You are " followed by the value (1)'] },
+    { marks: 2, q: `The following JavaScript is meant to add two numbers but displays 34 when 3 and 4 are entered. Identify the error and state how to fix it.` + codeBlock(['var total = document.getElementById("a").value + document.getElementById("b").value;'], hiJS), mp: ['.value returns strings, so + joins them ("3" + "4" = "34") (1)', 'Convert each value with parseInt() (or parseFloat / Number) before adding (1)'] },
+    { marks: 4, q: `Compare client-side and server-side processing for validating the data entered into a web form.`, mp: ['Client-side runs in the browser using JavaScript, giving immediate feedback without contacting the server (1)', 'It reduces server load and network traffic (1)', 'But the user can disable or change the script, so it cannot be relied on (1)', 'Server-side validation is secure and can check against the database, but every check needs a round trip and adds load to the server (1)', 'Best practice: validate on both sides (max 4)'] },
+    { marks: 2, q: `A shopping website calculates the basket total in JavaScript. Explain why the server must recalculate the total before taking payment.`, mp: ['Client-side code and data can be altered by the user, so the total sent could be false (1)', 'Recalculating on the server, where the user has no access, ensures the correct amount is charged (1)'] },
+    { marks: 3, q: `Write HTML for an ordered list of three items, "Plan", "Build", "Test", followed by a link to <code>https://ocr.org.uk</code> with the text "OCR".`, code: ['<ol>', '  <li>Plan</li>', '  <li>Build</li>', '  <li>Test</li>', '</ol>', '<a href="https://ocr.org.uk">OCR</a>'], hi: 'html', mp: ['ol element with closing tag (1)', 'three li elements with the correct text (1)', 'a element with href attribute and link text (1)'] },
+    { marks: 2, q: `State the purpose of the <code>&lt;script&gt;</code> tag and the <code>&lt;link&gt;</code> tag.`, mp: ['script: contains JavaScript, or loads it from a file with src, to run in the browser (1)', 'link: attaches an external resource, typically a CSS stylesheet with rel="stylesheet" href="file.css" (1)'] }
+  ];
+  const HI = { html: hiHTML, css: hiCSS, js: hiJS };
+  function renderExam() { $('#examList').innerHTML = EXAM.map((x, i) => `<div class="qcard"><div class="qhead"><h3>Question ${i + 1}</h3><span class="marks">${x.marks} mark${x.marks === 1 ? '' : 's'}</span></div><div>${x.q}</div><button class="btn" type="button" data-reveal="${i}">Show answer</button><div class="answer" hidden>${x.code ? `<div class="mp">Example answer</div>${codeBlock(x.code, HI[x.hi] || hiHTML)}` : ''}<div class="mp">Mark points</div><ul>${x.mp.map(m => `<li>${m}</li>`).join('')}</ul></div></div>`).join(''); }
+  $('#examList').addEventListener('click', ev => { const b = ev.target.closest('[data-reveal]'); if (!b) return; const a = b.nextElementSibling; a.hidden = !a.hidden; b.textContent = a.hidden ? 'Show answer' : 'Hide answer'; });
+  renderExam();
+
+  /* ---------- Quick quiz ---------- */
+  const Q = { cur: null, score: [0, 0] };
+  const rnd = n => Math.floor(Math.random() * n);
+  const QT = {
+    tag() { const pool = [['the largest heading', 'h1'], ['a paragraph of text', 'p'], ['an image', 'img'], ['a hyperlink', 'a'], ['one item in a list', 'li'], ['a bulleted list', 'ul'], ['a numbered list', 'ol'], ['a container to group elements', 'div'], ['a text box or button the user interacts with', 'input'], ['the text shown in the browser tab', 'title'], ['the section holding the displayed content', 'body'], ['the section holding information about the page, such as the title', 'head'], ['attaching an external stylesheet', 'link'], ['holding JavaScript', 'script'], ['grouping inputs that are submitted together', 'form']]; const [d, a] = pool[rnd(pool.length)]; return { prompt: `Which HTML tag is used for <b>${d}</b>?`, fields: [{ id: 'a', label: 'Tag name', a }], reveal: `<${a}>` }; },
+    sel() { const k = rnd(3); if (k === 0) { const attr = ['img', 'alt', 'describes the image for screen readers and if it fails to load'][0]; const pool = [['img', 'the location of the image file', 'src'], ['img', 'the text shown if the image cannot be displayed', 'alt'], ['a', 'the address the link goes to', 'href'], ['input', 'whether it is a text box or a submit button', 'type'], ['any element', 'a unique label used by getElementById', 'id'], ['any element', 'a label shared by several elements for CSS', 'class'], ['link', 'the CSS file to load', 'href'], ['button', 'the JavaScript to run when it is clicked', 'onclick']]; const [t, d, a] = pool[rnd(pool.length)]; return { prompt: `On ${t === 'any element' ? 'any element' : `an <code>&lt;${t}&gt;</code>`}, which attribute gives <b>${d}</b>?`, fields: [{ id: 'a', label: 'Attribute', a }], reveal: a }; } const pool = [['every paragraph', 'p', 'element'], ['elements with class="note"', '.note', 'class'], ['the element with id="box"', '#box', 'id'], ['every list item', 'li', 'element'], ['elements with class="warning"', '.warning', 'class'], ['the element with id="menu"', '#menu', 'id']]; const [d, a, kind] = pool[rnd(pool.length)]; return { prompt: `Write the CSS selector that matches <b>${d}</b>.`, fields: [{ id: 'a', label: 'Selector', a }], reveal: `${a} (${kind} selector)` }; },
+    js() { const k = rnd(4); const n1 = 2 + rnd(8), n2 = 2 + rnd(8); if (k === 0) return { prompt: `The user types ${n1} in the box with id a and ${n2} in the box with id b. What is displayed?` + codeBlock(['var t = document.getElementById("a").value + document.getElementById("b").value;', 'document.getElementById("r").innerHTML = t;'], hiJS), fields: [{ id: 'a', label: 'Displayed text', a: `${n1}${n2}` }], reveal: `${n1}${n2}: the values are strings, so + joins them.` }; if (k === 1) return { prompt: `The user types ${n1} and ${n2}. What is displayed?` + codeBlock(['var t = parseInt(document.getElementById("a").value) + parseInt(document.getElementById("b").value);', 'document.getElementById("r").innerHTML = t;'], hiJS), fields: [{ id: 'a', label: 'Displayed text', a: n1 + n2, kind: 'num' }], reveal: `${n1 + n2}: parseInt made them numbers first.` }; if (k === 2) return { prompt: `Which method finds an element in the page by its id? Give its name only.`, fields: [{ id: 'a', label: 'Method name', a: 'getelementbyid', alt: ['document.getelementbyid', 'getelementbyid()'] }], reveal: 'document.getElementById("…")' }; return { prompt: `Which property do you set to change the text inside a paragraph?`, fields: [{ id: 'a', label: 'Property', a: 'innerhtml', alt: ['.innerhtml'] }], reveal: '.innerHTML' }; },
+    side() { const t = CS_TASKS[rnd(CS_TASKS.length)]; return { prompt: `Should this be done client-side or server-side? <b>${t.name}</b>`, fields: [{ id: 'a', label: 'client or server', a: t.side, alt: [t.side + '-side', t.side + ' side'] }], reveal: `${t.side}-side. ${t.why}` }; }
+  };
+  function newQuestion() { let t = $('#qType').value; if (t === 'mix') t = ['tag', 'sel', 'js', 'side'][rnd(4)]; Q.cur = QT[t](); Q.cur.done = false; $('#qPrompt').innerHTML = Q.cur.prompt; $('#qFields').innerHTML = Q.cur.fields.map(f => `<label>${f.label}<input type="text" id="q_${f.id}" autocomplete="off" spellcheck="false"></label>`).join(''); $('#qForm').hidden = false; $('#qFb').textContent = ''; $('#qFb').className = 'fb'; const first = $('#qFields input'); if (first) first.focus({ preventScroll: true }); }
+  $('#newQ').addEventListener('click', newQuestion);
+  $('#qForm').addEventListener('submit', ev => { ev.preventDefault(); if (!Q.cur) return; const wrong = Q.cur.fields.filter(f => !checkAnswer($('#q_' + f.id).value, f)); if (!Q.cur.done) { Q.score[1]++; if (!wrong.length) Q.score[0]++; Q.cur.done = true; $('#pScore').textContent = `Score: ${Q.score[0]} / ${Q.score[1]}`; } if (!wrong.length) { $('#qFb').textContent = 'Correct.'; $('#qFb').className = 'fb ok'; } else { $('#qFb').innerHTML = `Not quite. ${esc(Q.cur.reveal)}`; $('#qFb').className = 'fb bad'; } });
+  $('#qReveal').addEventListener('click', () => { if (!Q.cur) return; if (!Q.cur.done) { Q.score[1]++; Q.cur.done = true; $('#pScore').textContent = `Score: ${Q.score[0]} / ${Q.score[1]}`; } $('#qFb').textContent = Q.cur.reveal; $('#qFb').className = 'fb'; });
+
+  /* ---------- Tabs ---------- */
+  const TABS = ['anatomy', 'html', 'css', 'js', 'trace', 'cs', 'exam', 'quiz'];
+  let curTab = 'anatomy';
+  function showTab(id) { curTab = id; TABS.forEach(t => { $('#tab-' + t).hidden = t !== id; }); document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === id ? 'true' : 'false')); }
+  $('#tabs').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) showTab(b.dataset.tab); });
+  document.addEventListener('keydown', ev => { if (ev.key !== 'ArrowRight' || ev.altKey || ev.metaKey || ev.ctrlKey) return; const tag = (ev.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') return; if (curTab === 'trace') { ev.preventDefault(); WTt.next(); } });
+  try { const h = location.hash.slice(1); if (TABS.includes(h)) curTab = h; } catch (_) {}
+  renderScore(); showTab(curTab);
+})();
+</script>
+
+</body></html>

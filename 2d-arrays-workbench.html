@@ -1,0 +1,782 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>2D Array Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: the same squared-paper worksheet as the FDE and floating point pages. Code and controls on the left, the live grid and the step narration on the right. */
+:root {
+  --paper: #eef2f7; --grid: #dde4ee; --surface: #ffffff; --unit: #f3f6fa;
+  --ink: #14213a; --ink-soft: #56637a; --line: #a6b2c4;
+  --row: #0b8587; --col: #b26f06; --cell: #6a4bd0; --code: #2459c4; --out: #c2365b;
+  --on-accent: #ffffff; --ok: #1b7f47; --bad: #c0392b;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+    --row: #33c3c1; --col: #f0a832; --cell: #a68dff; --code: #6f9bff; --out: #ff6f91; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1525; --grid: #172238; --surface: #131c2f; --unit: #19243a; --ink: #e3e9f4; --ink-soft: #9ba9c1; --line: #3b4a66;
+  --row: #33c3c1; --col: #f0a832; --cell: #a68dff; --code: #6f9bff; --out: #ff6f91; --on-accent: #0e1525; --ok: #49c682; --bad: #ff6b5e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px; color: var(--ink); font: 16px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(1.7rem, 3.2vw, 2.5rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; font-weight: 700; } h3 { font-size: 1rem; font-weight: 700; }
+p { margin: 0; }
+code { font-family: var(--font-mono); background: var(--unit); border-radius: 4px; padding: 0 4px; font-size: .92em; }
+.r { color: var(--row); font-weight: 700; } .c { color: var(--col); font-weight: 700; } .k { color: var(--cell); font-weight: 700; }
+body:not([data-course="alevel"]) [data-course="alevel"] { display: none !important; }
+body:not([data-course="gcse"]) [data-course="gcse"] { display: none !important; }
+
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.top p { margin-top: 4px; color: var(--ink-soft); max-width: 64ch; }
+.global { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.global label { font-size: .9rem; display: inline-flex; align-items: center; gap: 6px; }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: 700 .85rem var(--font-body); color: var(--ink-soft); background: var(--surface); border: 0; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+select, input[type="text"], input[type="number"] { font: 15px/1.4 var(--font-mono); color: var(--ink); background: var(--unit); border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px; max-width: 100%; }
+select { font-family: var(--font-body); font-size: .9rem; }
+input[type="text"] { width: 100%; }
+select:focus, input:focus, button:focus-visible, .gcell:focus-visible { outline: 3px solid color-mix(in srgb, var(--code) 55%, transparent); outline-offset: 2px; }
+.toggle { cursor: pointer; } .toggle input { width: 18px; height: 18px; accent-color: var(--code); }
+.score { font-size: .9rem; color: var(--ink-soft); }
+
+.intro { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 12px 24px; align-items: start; }
+@media (max-width: 860px) { .intro { grid-template-columns: minmax(0, 1fr); } }
+.intro ul { margin: 6px 0 0; padding-left: 18px; font-size: .95rem; display: grid; gap: 4px; }
+.decl { font: 700 clamp(1.1rem, 2.2vw, 1.5rem) var(--font-mono); display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
+.decl .r, .decl .c { padding: 0 2px; border-bottom: 3px solid currentColor; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.tabs button { flex: none; font: 700 .92rem var(--font-body); color: var(--ink-soft); background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tabs button:hover:not([aria-selected="true"]) { background: var(--unit); color: var(--ink); }
+
+.tab { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tab.wide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1000px) { .tab { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.field-row { display: grid; gap: 4px; } .field-row label { font-size: .85rem; color: var(--ink-soft); }
+.hint { font-size: .85rem; color: var(--ink-soft); }
+.msg { font-size: .9rem; min-height: 1.2em; } .msg.err { color: var(--bad); }
+.btn { font: 700 .92rem var(--font-body); color: var(--ink); background: var(--surface); border: 1.5px solid var(--ink); border-radius: 8px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--unit); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 85%, var(--paper)); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn kbd { font: 600 .72rem var(--font-mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .7; }
+.method { background: var(--unit); border-radius: 10px; padding: 12px 14px; }
+.method h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-family: var(--font-body); margin-bottom: 6px; }
+.method ol, .method ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; font-size: .93rem; }
+.method ol li::marker { font-family: var(--font-display); font-weight: 800; color: var(--code); }
+
+/* Grid */
+.gridwrap { overflow-x: auto; padding: 6px; }
+table.grid { border-collapse: separate; border-spacing: 3px; font-family: var(--font-mono); }
+table.grid th { font: 700 .72rem var(--font-mono); color: var(--ink-soft); padding: 2px 4px; text-align: center; border-radius: 6px; }
+table.grid th.rh { color: var(--row); min-width: 2.2em; } table.grid th.ch { color: var(--col); }
+table.grid th.corner { font: 700 .7rem var(--font-body); color: var(--ink-soft); text-align: right; white-space: nowrap; }
+table.grid th.rh.hl { background: color-mix(in srgb, var(--row) 22%, var(--surface)); color: var(--ink); }
+table.grid th.ch.hl { background: color-mix(in srgb, var(--col) 22%, var(--surface)); color: var(--ink); }
+.gcell { width: 52px; height: 42px; text-align: center; border: 1.5px solid var(--line); border-radius: 7px; background: var(--surface); font-weight: 700; font-size: .95rem; cursor: pointer; transition: background-color .15s, border-color .15s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; padding: 0 3px; }
+.gcell.wide { width: 68px; }
+.gcell.empty { color: var(--line); font-weight: 400; }
+.gcell.rowhl { background: color-mix(in srgb, var(--row) 10%, var(--surface)); }
+.gcell.colhl { background: color-mix(in srgb, var(--col) 10%, var(--surface)); }
+.gcell.rowhl.colhl, .gcell.sel { background: color-mix(in srgb, var(--cell) 20%, var(--surface)); border-color: var(--cell); }
+.gcell.visited { background: color-mix(in srgb, var(--code) 9%, var(--surface)); border-color: color-mix(in srgb, var(--code) 40%, var(--line)); }
+.gcell.cur { background: color-mix(in srgb, var(--cell) 30%, var(--surface)); border-color: var(--cell); border-width: 2.5px; }
+.gcell.hit { box-shadow: inset 0 0 0 2px var(--ok); }
+.gcell.unset { color: var(--line); font-weight: 400; }
+.axis { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+
+/* Readout */
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 0; }
+.readout div { background: var(--unit); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.readout dt { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+.readout dd { margin: 2px 0 0; font: 700 1rem var(--font-mono); overflow-wrap: anywhere; }
+.readout dd small { font: .8rem var(--font-body); color: var(--ink-soft); }
+
+/* Code */
+pre.code { margin: 0; background: var(--unit); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13.5px/1.6 var(--font-mono); counter-reset: ln; }
+pre.code .ln { display: block; padding: 0 12px 0 44px; position: relative; white-space: pre; min-width: max-content; }
+pre.code .ln::before { counter-increment: ln; content: counter(ln); position: absolute; left: 12px; color: var(--line); width: 22px; text-align: right; }
+pre.code .ln.cur { background: color-mix(in srgb, var(--code) 18%, var(--surface)); box-shadow: inset 3px 0 0 var(--code); }
+pre.code .ln.fn { color: var(--ink-soft); }
+.codehead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.codehead .lang { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+
+/* Walkthrough */
+.wt { display: grid; gap: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.narration { display: grid; gap: 8px; }
+.narr-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stage-tag { font: 800 .76rem var(--font-body); letter-spacing: .1em; text-transform: uppercase; background: var(--code); color: var(--on-accent); padding: 3px 10px; border-radius: 999px; }
+.stage-tag.done { background: var(--ok); } .stage-tag.ready { background: var(--ink-soft); }
+.step-count { font-size: .85rem; color: var(--ink-soft); }
+.step-title { font-size: 1.25rem; }
+.step-text { max-width: 70ch; }
+.ask { display: grid; gap: 8px; background: color-mix(in srgb, var(--code) 8%, var(--surface)); border: 1.5px solid var(--code); border-radius: 10px; padding: 12px; }
+.ask form { display: flex; flex-wrap: wrap; gap: 8px; } .ask input { flex: 1 1 140px; width: auto; } .ask p { font-weight: 700; }
+.fb { font-size: .9rem; min-height: 1.3em; } .fb.ok { color: var(--ok); } .fb.bad { color: var(--bad); }
+.work { display: grid; gap: 8px; }
+.state { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.vars { display: flex; flex-wrap: wrap; gap: 6px; align-content: start; }
+.vars span { font: 700 .9rem var(--font-mono); background: var(--unit); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+.vars span b { color: var(--code); }
+.vars:empty::before { content: "No variables yet"; font: .85rem var(--font-body); color: var(--ink-soft); }
+.outbox { background: var(--unit); border-radius: 8px; padding: 8px 10px; font: .9rem/1.5 var(--font-mono); min-height: 2.4em; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--out); }
+.outbox:empty::before { content: "Nothing output yet"; font: .85rem var(--font-body); color: var(--ink-soft); }
+.statehead { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); margin-bottom: 4px; }
+.mini { border-collapse: separate; border-spacing: 2px; font-family: var(--font-mono); font-size: .8rem; }
+.mini td { width: 34px; height: 26px; text-align: center; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.mini td.unset { color: var(--line); } .mini td.cur { border-color: var(--cell); background: color-mix(in srgb, var(--cell) 25%, var(--surface)); }
+.mini th { font-size: .66rem; color: var(--ink-soft); font-weight: 700; }
+
+/* Memory tab */
+.memstrip { display: flex; flex-wrap: wrap; gap: 4px; }
+.memcell { display: grid; justify-items: center; gap: 2px; padding: 4px 2px; min-width: 56px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--surface); font-family: var(--font-mono); cursor: pointer; }
+.memcell small { font: .62rem var(--font-body); color: var(--ink-soft); } .memcell b { font-size: .9rem; } .memcell i { font: .62rem var(--font-mono); color: var(--line); }
+.memcell.sel { border-color: var(--cell); background: color-mix(in srgb, var(--cell) 20%, var(--surface)); }
+.memcell.rowhl { border-color: var(--row); }
+.calc { font: 1rem var(--font-mono); background: var(--unit); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; overflow-x: auto; }
+.calc b { color: var(--code); }
+
+/* Exam questions */
+.qcard { border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+.qcard .qhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; align-items: baseline; }
+.marks { font: 700 .75rem var(--font-body); color: var(--on-accent); background: var(--ink-soft); padding: 2px 8px; border-radius: 999px; }
+.qcard pre.code { font-size: 13px; }
+.answer { background: var(--unit); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+.answer ul { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: .93rem; }
+.answer .mp { font: 700 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+.q-fields { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.q-fields label { display: grid; gap: 4px; font-size: .85rem; color: var(--ink-soft); }
+.q-prompt { font-size: 1.05rem; max-width: 70ch; }
+.q-prompt pre.code { margin-top: 8px; }
+
+details.tips { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+details.tips summary { cursor: pointer; font: 700 1.05rem var(--font-display); }
+details.tips ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: .95rem; }
+@media (prefers-reduced-motion: reduce) { .gcell { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>2D arrays: a table with two indexes</h1>
+      <p>Click cells, trace nested loops line by line, and see the exam questions OCR asks. Switch between GCSE (J277, topic 2.2.3) and A Level (H446, topic 1.4.2), and between OCR's exam notation and Python.</p>
+    </div>
+    <div class="global">
+      <div class="seg" id="courseSeg" role="group" aria-label="Course"><button type="button" data-pick="gcse" aria-pressed="true">GCSE J277</button><button type="button" data-pick="alevel" aria-pressed="false">A Level H446</button></div>
+      <div class="seg" id="langSeg" role="group" aria-label="Code notation"><button type="button" data-lang="erl" aria-pressed="true"><span data-course="gcse">OCR Exam Reference Language</span><span data-course="alevel">OCR pseudocode</span></button><button type="button" data-lang="py" aria-pressed="false">Python</button></div>
+      <label class="toggle"><input type="checkbox" id="quizOn"> Quiz me</label>
+      <span class="score" id="scoreBox" hidden>Quiz: <span id="score">0 / 0</span></span>
+    </div>
+  </header>
+
+  <section class="intro" aria-label="The idea">
+    <div>
+      <div class="decl" id="declLine"></div>
+      <p class="hint" style="margin-top:8px" id="declHint"></p>
+    </div>
+    <ul>
+      <li>A 1D array is a <b>list</b> with one index. A 2D array is a <b>table</b>: one identifier, two indexes, usually written <code>name[<span class="r">row</span>, <span class="c">column</span>]</code>.</li>
+      <li>Indexes start at <b>0</b>. An array declared <code>[4, 5]</code> has rows 0 to 3 and columns 0 to 4, and holds 4 × 5 = 20 elements.</li>
+      <li>Every element has the <b>same data type</b>, and the size is fixed when it is declared.</li>
+      <li>To visit every element you need <b>nested loops</b>: the outer loop chooses the row, the inner loop walks along it.</li>
+      <li data-course="alevel">OCR allows arrays of up to <b>three</b> dimensions: <code>array cube[2, 3, 4]</code> has 2 × 3 × 4 = 24 elements. The same ideas apply with one more index and one more loop.</li>
+    </ul>
+  </section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="explore" aria-selected="true">Explore the grid</button>
+    <button role="tab" data-tab="trace" aria-selected="false">Trace the code</button>
+    <button role="tab" data-tab="memory" aria-selected="false" data-course="alevel">In memory</button>
+    <button role="tab" data-tab="exam" aria-selected="false">Exam questions</button>
+    <button role="tab" data-tab="quiz" aria-selected="false">Quick quiz</button>
+  </nav>
+
+  <!-- Explore -->
+  <section class="tab" id="tab-explore" role="tabpanel">
+    <div class="panel">
+      <div class="panel-head"><h2>The array</h2><select id="preset" aria-label="Example data"></select></div>
+      <p class="hint" id="presetHint"></p>
+      <dl class="readout" id="exRead"></dl>
+      <div class="field-row"><label for="editVal">Change the selected element</label><div style="display:flex;gap:8px"><input type="text" id="editVal" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="editBtn">Set</button></div></div>
+      <p class="msg err" id="editMsg" role="status"></p>
+      <div class="field-row"><label for="orderSel">Which index comes first?</label><select id="orderSel"><option value="rc">name[row, column] (usual)</option><option value="cr">name[column, row] (some questions define it this way)</option></select></div>
+      <div class="method">
+        <h3>Reading an index</h3>
+        <ol>
+          <li>The first number picks the <span class="r">row</span> (count down from 0).</li>
+          <li>The second number picks the <span class="c">column</span> (count across from 0).</li>
+          <li>Where they cross is the element. <code>name[2, 3]</code> is the fourth element of the third row, because counting starts at 0.</li>
+          <li>If a question defines its own order, such as "<code>grid[x, y]</code> where x is the column", follow the question.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Click any element</h2>
+      <div class="gridwrap" id="exGrid"></div>
+      <pre class="code" id="exCode"></pre>
+    </div>
+  </section>
+
+  <!-- Trace -->
+  <section class="tab" id="tab-trace" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Program</h2><select id="progSel" aria-label="Program"></select></div>
+      <p class="hint" id="progHint"></p>
+      <div class="codehead"><span class="lang" id="langLabel"></span><span class="hint">Highlighted line is the one being executed</span></div>
+      <pre class="code" id="traceCode"></pre>
+      <p class="msg err" id="traceMsg" role="status"></p>
+      <div class="method">
+        <h3>How nested loops visit a 2D array</h3>
+        <ol>
+          <li>The outer loop sets the row index once per row.</li>
+          <li>For each row, the inner loop runs <em>all the way through</em> the columns.</li>
+          <li>So the cells are visited row by row: [0,0], [0,1], … [0,C−1], then [1,0], [1,1], …</li>
+          <li>Swap the loops (columns outside, rows inside) and the same cells are visited column by column instead.</li>
+          <li>Total iterations of the inner body = rows × columns.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Live grid</h2><span class="hint">faded = already visited, purple = this step</span></div>
+      <div class="gridwrap" id="trGrid"></div>
+      <div class="wt" id="wt-trace"></div>
+    </div>
+  </section>
+
+  <!-- Memory (A Level) -->
+  <section class="tab" id="tab-memory" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>How a 2D array is stored</h2>
+      <p class="hint">Memory is one-dimensional: a numbered sequence of bytes. A 2D array is stored as one <b>contiguous block</b>, row after row (row-major order). The compiler turns the two indexes into one address with a formula, which is why every element can be reached in the same, constant time.</p>
+      <div class="field-row"><label for="baseAddr">Base address (address of element [0,0])</label><input type="number" id="baseAddr" value="1000" min="0" step="1"></div>
+      <div class="field-row"><label for="elemSize">Size of each element</label><select id="elemSize"><option value="1">1 byte</option><option value="2">2 bytes</option><option value="4" selected>4 bytes (a 32-bit integer)</option><option value="8">8 bytes</option></select></div>
+      <div class="calc" id="memCalc"></div>
+      <div class="method">
+        <h3>Points the mark scheme looks for</h3>
+        <ul>
+          <li>Arrays are <b>static</b>: the size is fixed at declaration and the memory is allocated in one block, so it cannot grow at run time.</li>
+          <li>Elements are stored <b>contiguously</b> (next to each other), all of the same type, so each occupies the same number of bytes.</li>
+          <li>Address of <code>[r, c]</code> = base + (r × columns + c) × element size. Any element is found with one calculation: direct access, O(1).</li>
+          <li>Three dimensions: <code>[i, j, k]</code> in an array <code>[A, B, C]</code> is element number (i × B + j) × C + k.</li>
+          <li>When an array is passed to a subroutine it is normally passed <b>by reference</b>: the subroutine receives the address, not a copy, so changes affect the original and nothing is copied. Pass by value would copy the whole block.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Click an element to see where it lives</h2>
+      <div class="gridwrap" id="memGrid"></div>
+      <div class="axis">The same elements as one block of memory</div>
+      <div class="memstrip" id="memStrip"></div>
+    </div>
+  </section>
+
+  <!-- Exam questions -->
+  <section class="tab wide" id="tab-exam" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2 id="examHead">Exam-style questions</h2><span class="hint">Written in the style of OCR papers. Reveal the answer to self-mark against the mark points.</span></div>
+      <div id="examList" style="display:grid;gap:12px"></div>
+    </div>
+  </section>
+
+  <!-- Quick quiz -->
+  <section class="tab" id="tab-quiz" role="tabpanel" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Quick quiz</h2>
+        <select id="qType" aria-label="Question type"><option value="mix">Mixed</option><option value="value">Value at an index</option><option value="index">Index of a value</option><option value="size">Sizes and bounds</option><option value="trace">What is output?</option></select>
+      </div>
+      <p class="hint">Questions use the array currently shown on the Explore tab. Give an index as two numbers, for example <code>2,3</code>.</p>
+      <div class="controls"><button class="btn primary" id="newQ" type="button">New question</button><span class="score" id="pScore">Score: 0 / 0</span></div>
+    </div>
+    <div class="panel">
+      <div class="q-prompt" id="qPrompt">Press <b>New question</b> to start.</div>
+      <form id="qForm" autocomplete="off" hidden>
+        <div class="q-fields" id="qFields"></div>
+        <div class="controls" style="margin-top:10px"><button class="btn primary" type="submit">Check</button><button class="btn" type="button" id="qReveal">Show answer</button></div>
+      </form>
+      <div class="fb" id="qFb" role="status"></div>
+      <div class="gridwrap" id="qGrid"></div>
+    </div>
+  </section>
+
+  <details class="tips">
+    <summary>Exam tips and common mistakes</summary>
+    <ul>
+      <li><b>Indexes start at 0.</b> <code>array seats[4, 5]</code> has rows 0 to 3 and columns 0 to 4. <code>seats[4, 5]</code> does not exist: that is an out-of-bounds error, the single most common slip.</li>
+      <li><b>Say which index is which.</b> Unless the question tells you otherwise, treat the first index as the row and the second as the column, and keep to it throughout your answer. If the question defines <code>grid[x, y]</code> with x across, follow the question.</li>
+      <li><b>Loop bounds.</b> In OCR notation <code>for c = 0 to 4</code> runs five times and <em>includes</em> 4. In Python <code>range(5)</code> runs five times and <em>excludes</em> 5. Writing <code>to 5</code> for five columns goes out of bounds.</li>
+      <li><b>Close the inner loop first.</b> <code>next c</code> comes before <code>next r</code>. In Python this is indentation; in OCR notation it is the order of the <code>next</code> lines.</li>
+      <li><b>Accumulators.</b> Set <code>total = 0</code> before the loops. A row total must be reset to 0 inside the outer loop, once per row, not once at the start.</li>
+      <li><b>Output inside or outside the loop?</b> To print every element, the print goes inside the inner loop. To print one total, it goes after both loops. Marks are lost for printing a running total 20 times.</li>
+      <li><b>Trace tables.</b> Use a column for r, a column for c, a column for the element being read and one for each variable that changes. Only write a value when it changes.</li>
+      <li><b>Number of elements</b> = rows × columns. A 3D array multiplies all three sizes.</li>
+      <li><b>Python's lists of lists</b> (<code>grid[r][c]</code>) are accepted in the exam as a 2D array. Do not mix the notations in one answer: <code>grid[r, c]</code> in OCR style, <code>grid[r][c]</code> in Python.</li>
+      <li data-course="alevel"><b>A Level:</b> be ready to explain that arrays are static, contiguous and the same type throughout, to give the address formula, and to say why an array parameter is passed by reference.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const G = { course: 'gcse', lang: 'erl', quiz: false, score: [0, 0], order: 'rc', sel: [0, 0] };
+
+  /* ---------- Example data ---------- */
+  const PRESETS = [
+    { id: 'scores', name: 'Quiz scores: 4 students × 5 rounds', A: 'scores', type: 'num', hint: 'Each row is one student, each column is one round of the quiz. scores[r, c] is the score of student r in round c.', target: 8, data: [[7, 9, 4, 8, 6], [5, 5, 10, 7, 8], [9, 3, 6, 8, 10], [6, 8, 7, 2, 9]] },
+    { id: 'seats', name: 'Seating plan: 3 rows × 4 seats', A: 'seats', type: 'str', hint: 'Each row of the classroom is a row of the array. An empty string "" means the seat is free.', target: '', data: [['Priya', 'Tom', '', 'Leo'], ['', 'Maya', 'Sam', 'Ava'], ['Zak', '', 'Isla', '']] },
+    { id: 'board', name: 'Noughts and crosses: 3 × 3', A: 'board', type: 'str', hint: 'A game board is the classic 2D array. "" is an empty square.', target: 'X', data: [['X', 'O', 'X'], ['', 'X', 'O'], ['O', '', 'X']] },
+    { id: 'temps', name: 'Temperatures: 5 days × 4 readings', A: 'temps', type: 'num', hint: 'Each row is a day, each column a reading time (06:00, 12:00, 18:00, 00:00).', target: 12, data: [[8.5, 14, 12, 9], [7, 13.5, 11, 8], [9, 16, 14, 10.5], [10, 17.5, 15, 12], [6, 12, 10, 7]] },
+    { id: 'image', name: 'Black and white image: 6 × 8 pixels', A: 'image', type: 'num', hint: 'A bitmap is a 2D array of pixels. 1 is black, 0 is white.', target: 1, data: [[0, 0, 1, 1, 1, 1, 0, 0], [0, 1, 0, 0, 0, 0, 1, 0], [1, 0, 1, 0, 0, 1, 0, 1], [1, 0, 0, 0, 0, 0, 0, 1], [0, 1, 0, 1, 1, 0, 1, 0], [0, 0, 1, 0, 0, 1, 0, 0]] }
+  ];
+  let P = null; // current preset (with a working copy of data)
+  const R = () => P.data.length, C = () => P.data[0].length;
+  const lit = v => (P.type === 'num' ? String(v) : `"${v}"`);
+  const show = v => (v === null ? '·' : v === '' ? '""' : String(v));
+  const pyBool = b => (b ? 'True' : 'False');
+
+  function loadPreset(i, keep) {
+    const src = PRESETS[i];
+    P = { ...src, data: src.data.map(r => r.slice()) };
+    if (!keep) G.sel = [0, 0];
+    $('#presetHint').textContent = src.hint;
+    renderAll();
+  }
+
+  /* ---------- Grid rendering ---------- */
+  function gridHTML(data, A, o = {}) {
+    const rows = data.length, cols = data[0].length;
+    const wide = P.type === 'str';
+    let h = `<table class="grid" aria-label="${esc(A)} array"><thead><tr><th class="corner">${esc(A)}<br><span class="axis" style="color:var(--col)">col →</span></th>`;
+    for (let c = 0; c < cols; c++) h += `<th class="ch${o.col === c ? ' hl' : ''}" data-c="${c}">${c}</th>`;
+    h += '</tr></thead><tbody>';
+    for (let r = 0; r < rows; r++) {
+      h += `<tr><th class="rh${o.row === r ? ' hl' : ''}" data-r="${r}">${r}</th>`;
+      for (let c = 0; c < cols; c++) {
+        const v = data[r][c];
+        const cls = ['gcell'];
+        if (wide) cls.push('wide');
+        if (v === '') cls.push('empty');
+        if (v === null) cls.push('unset');
+        if (o.row === r) cls.push('rowhl'); if (o.col === c) cls.push('colhl');
+        if (o.sel && o.sel[0] === r && o.sel[1] === c) cls.push('sel');
+        if (o.visited && o.visited.has(r + ',' + c)) cls.push('visited');
+        if (o.cur && o.cur[0] === r && o.cur[1] === c) cls.push('cur');
+        if (o.hits && o.hits.has(r + ',' + c)) cls.push('hit');
+        h += `<td class="${cls.join(' ')}" data-r="${r}" data-c="${c}" tabindex="0" role="button" aria-label="${esc(A)} ${r} ${c} is ${esc(show(v))}">${esc(show(v))}</td>`;
+      }
+      h += '</tr>';
+    }
+    h += '</tbody></table>';
+    return h;
+  }
+  function miniHTML(data, cur) {
+    let h = '<table class="mini"><tr><th></th>';
+    for (let c = 0; c < data[0].length; c++) h += `<th>${c}</th>`;
+    h += '</tr>';
+    data.forEach((row, r) => { h += `<tr><th>${r}</th>`; row.forEach((v, c) => { h += `<td class="${v === null ? 'unset' : ''}${cur && cur[0] === r && cur[1] === c ? ' cur' : ''}">${esc(show(v))}</td>`; }); h += '</tr>'; });
+    return h + '</table>';
+  }
+
+  /* ---------- Explore tab ---------- */
+  function idx(r, c) { return G.order === 'rc' ? `${r}, ${c}` : `${c}, ${r}`; }
+  function pyIdx(r, c) { return G.order === 'rc' ? `[${r}][${c}]` : `[${c}][${r}]`; }
+  function renderDecl() {
+    const A = P.A, r = R(), c = C();
+    const erl = G.order === 'rc' ? `array ${A}[<span class="r">${r}</span>, <span class="c">${c}</span>]` : `array ${A}[<span class="c">${c}</span>, <span class="r">${r}</span>]`;
+    const py = G.order === 'rc' ? `${A} = [[${P.type === 'num' ? 0 : '""'}] * <span class="c">${c}</span> for row in range(<span class="r">${r}</span>)]` : `${A} = [[${P.type === 'num' ? 0 : '""'}] * <span class="r">${r}</span> for col in range(<span class="c">${c}</span>)]`;
+    $('#declLine').innerHTML = G.lang === 'erl' ? erl : py;
+    $('#declHint').innerHTML = G.lang === 'erl'
+      ? `Declares a 2D array called <b>${A}</b> with <span class="r">${r} rows</span> and <span class="c">${c} columns</span>: ${r} × ${c} = <b>${r * c}</b> elements, indexed from 0.`
+      : `Python has no built-in 2D array; a list of ${r} lists, each ${c} long, does the same job. ${r} × ${c} = <b>${r * c}</b> elements, indexed from 0.`;
+  }
+  function renderExplore() {
+    const [r, c] = G.sel; const v = P.data[r][c]; const A = P.A;
+    $('#exGrid').innerHTML = gridHTML(P.data, A, { row: r, col: c, sel: [r, c] });
+    const ord = n => ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'][n] || `${n + 1}th`;
+    $('#exRead').innerHTML = `<div><dt>Element</dt><dd>${esc(A)}[${idx(r, c)}]</dd></div><div><dt>Value</dt><dd>${esc(show(v))} <small>${v === '' ? 'empty string' : P.type === 'num' ? 'number' : 'string'}</small></dd></div><div><dt>Row</dt><dd class="r">${r} <small>the ${ord(r)} row</small></dd></div><div><dt>Column</dt><dd class="c">${c} <small>the ${ord(c)} column</small></dd></div><div><dt>Size</dt><dd>${R()} × ${C()} = ${R() * C()} <small>rows 0–${R() - 1}, columns 0–${C() - 1}</small></dd></div>`;
+    $('#editVal').value = v === null ? '' : String(v);
+    const erl = [`array ${A}[${G.order === 'rc' ? R() + ', ' + C() : C() + ', ' + R()}]`, `${A}[${idx(r, c)}] = ${lit(v)}`, `print(${A}[${idx(r, c)}])   // outputs ${show(v)}`];
+    const py = [`${A} = [[${P.type === 'num' ? 0 : '""'}] * ${G.order === 'rc' ? C() : R()} for _ in range(${G.order === 'rc' ? R() : C()})]`, `${A}${pyIdx(r, c)} = ${lit(v)}`, `print(${A}${pyIdx(r, c)})   # outputs ${show(v)}`];
+    $('#exCode').innerHTML = (G.lang === 'erl' ? erl : py).map(l => `<span class="ln">${esc(l)}</span>`).join('');
+    renderDecl();
+  }
+  $('#exGrid').addEventListener('click', ev => { const td = ev.target.closest('.gcell'); if (!td) return; G.sel = [+td.dataset.r, +td.dataset.c]; renderExplore(); });
+  $('#exGrid').addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { const td = ev.target.closest('.gcell'); if (td) { ev.preventDefault(); G.sel = [+td.dataset.r, +td.dataset.c]; renderExplore(); } } });
+  $('#editBtn').addEventListener('click', () => {
+    const raw = $('#editVal').value.trim(); const [r, c] = G.sel;
+    if (P.type === 'num') { const n = Number(raw); if (raw === '' || !isFinite(n)) { $('#editMsg').textContent = 'This array holds numbers, so enter a number.'; return; } P.data[r][c] = n; }
+    else P.data[r][c] = raw.replace(/^"|"$/g, '').slice(0, 8);
+    $('#editMsg').textContent = ''; renderAll(true);
+  });
+  $('#orderSel').addEventListener('change', ev => { G.order = ev.target.value; renderExplore(); });
+
+  /* ---------- Programs for the tracer ---------- */
+  const PROGS = [
+    { id: 'output', name: 'Output every element', needs: 'any', hint: 'The basic pattern: nested loops that visit every cell, row by row.',
+      code: ({ A, r, c }) => ({ erl: [`for r = 0 to ${r - 1}`, `  for c = 0 to ${c - 1}`, `    print(${A}[r, c])`, '  next c', 'next r'], py: [`for r in range(${r}):`, `    for c in range(${c}):`, `        print(${A}[r][c])`] }),
+      gen(S) {
+        const { A, r: RR, c: CC } = S;
+        S.step({ e: 0, p: 0, title: 'The outer loop starts', text: `r = 0. The outer loop chooses the row. It runs ${RR} times, for r = 0 to ${RR - 1}.`, vars: { r: 0 } });
+        for (let r = 0; r < RR; r++) {
+          for (let c = 0; c < CC; c++) {
+            const v = S.get(r, c); S.print(show(v));
+            S.step({ e: 2, p: 2, cell: [r, c], title: `Print ${A}[${r}, ${c}]`, text: `${c === 0 ? `The inner loop starts for row ${r}: c = 0. ` : ''}${A}[${r}, ${c}] is row ${r}, column ${c}: <b>${esc(show(v))}</b>. It is printed.`, vars: { r, c }, q: { q: `What is ${A}[${r}, ${c}]?`, a: v } });
+          }
+          S.step({ e: 4, p: 0, title: `Row ${r} finished`, text: r < RR - 1 ? `c has reached ${CC - 1}, so the inner loop ends. <code>next r</code>: r becomes ${r + 1} and the inner loop starts again from c = 0.` : `The inner loop ends, and r has reached ${RR - 1}, so the outer loop ends too. Every element was visited exactly once, row by row: ${RR} × ${CC} = ${RR * CC} prints.`, vars: { r: Math.min(r + 1, RR - 1), c: CC - 1 } });
+        }
+      } },
+    { id: 'total', name: 'Total of all the values', needs: 'num', hint: 'An accumulator initialised before the loops, updated inside the inner loop, printed after both loops.',
+      code: ({ A, r, c }) => ({ erl: ['total = 0', `for r = 0 to ${r - 1}`, `  for c = 0 to ${c - 1}`, `    total = total + ${A}[r, c]`, '  next c', 'next r', 'print("Total: " + str(total))'], py: ['total = 0', `for r in range(${r}):`, `    for c in range(${c}):`, `        total = total + ${A}[r][c]`, 'print("Total:", total)'] }),
+      gen(S) {
+        const { A, r: RR, c: CC } = S; let total = 0;
+        S.step({ e: 0, p: 0, title: 'Initialise the accumulator', text: `total starts at 0, <b>before</b> the loops. Forgetting this line is a classic lost mark.`, vars: { total } });
+        for (let r = 0; r < RR; r++) for (let c = 0; c < CC; c++) {
+          const v = S.get(r, c); const old = total; total = round(total + v);
+          S.step({ e: 3, p: 3, cell: [r, c], title: `Add ${A}[${r}, ${c}]`, text: `${A}[${r}, ${c}] = ${v}. total = ${old} + ${v} = <b>${total}</b>.`, vars: { r, c, total }, q: { q: `What is total after adding ${A}[${r}, ${c}]?`, a: total } });
+        }
+        S.print('Total: ' + total);
+        S.step({ e: 6, p: 4, title: 'Print once, after both loops', text: `Both loops have finished, so total holds the sum of all ${RR * CC} elements: <b>${total}</b>. The print is after the loops, so it happens exactly once.`, vars: { total } });
+      } },
+    { id: 'max', name: 'Find the largest value and where it is', needs: 'num', hint: 'Keep the best so far and its position; compare every element against it.',
+      code: ({ A, r, c }) => ({ erl: [`highest = ${A}[0, 0]`, 'highRow = 0', 'highCol = 0', `for r = 0 to ${r - 1}`, `  for c = 0 to ${c - 1}`, `    if ${A}[r, c] > highest then`, `      highest = ${A}[r, c]`, '      highRow = r', '      highCol = c', '    endif', '  next c', 'next r', 'print("Highest is " + str(highest) + " at [" + str(highRow) + ", " + str(highCol) + "]")'], py: [`highest = ${A}[0][0]`, 'high_row = 0', 'high_col = 0', `for r in range(${r}):`, `    for c in range(${c}):`, `        if ${A}[r][c] > highest:`, `            highest = ${A}[r][c]`, '            high_row = r', '            high_col = c', 'print("Highest is", highest, "at", high_row, high_col)'] }),
+      gen(S) {
+        const { A, r: RR, c: CC } = S; let best = S.get(0, 0), br = 0, bc = 0;
+        S.step({ e: 0, p: 0, cell: [0, 0], title: 'Start with the first element', text: `highest is set to ${A}[0, 0] = ${best}, with its position [0, 0]. Starting with a real element is safer than starting with 0, which fails if every value is negative.`, vars: { highest: best, highRow: 0, highCol: 0 } });
+        for (let r = 0; r < RR; r++) for (let c = 0; c < CC; c++) {
+          const v = S.get(r, c); const prevBest = best; const bigger = v > best;
+          if (bigger) { best = v; br = r; bc = c; }
+          S.step({ e: bigger ? 6 : 5, p: bigger ? 6 : 5, cell: [r, c], hit: bigger ? [r, c] : null, title: `Is ${A}[${r}, ${c}] > highest?`, text: `${A}[${r}, ${c}] = ${v} and highest = ${prevBest}, so <b>${bigger ? 'yes' : 'no'}</b>: ${bigger ? `highest becomes ${v} and the position is recorded as [${r}, ${c}].` : 'nothing changes.'}`, vars: { r, c, highest: best, highRow: br, highCol: bc }, q: { q: `Is ${A}[${r}, ${c}] greater than the highest so far? (yes/no)`, a: bigger ? 'yes' : 'no', kind: 'text' } });
+        }
+        S.print(`Highest is ${best} at [${br}, ${bc}]`);
+        S.step({ e: 12, p: 9, title: 'Report the result', text: `After every element has been compared, highest = <b>${best}</b> at [${br}, ${bc}]. If the largest value appears more than once, the first one found (in row order) is kept, because the test is > not >=.`, vars: { highest: best, highRow: br, highCol: bc } });
+      } },
+    { id: 'rows', name: 'Total of each row', needs: 'num', hint: 'The accumulator is reset inside the outer loop, once per row.',
+      code: ({ A, r, c }) => ({ erl: [`for r = 0 to ${r - 1}`, '  rowTotal = 0', `  for c = 0 to ${c - 1}`, `    rowTotal = rowTotal + ${A}[r, c]`, '  next c', '  print("Row " + str(r) + " total: " + str(rowTotal))', 'next r'], py: [`for r in range(${r}):`, '    row_total = 0', `    for c in range(${c}):`, `        row_total = row_total + ${A}[r][c]`, '    print("Row", r, "total:", row_total)'] }),
+      gen(S) {
+        const { A, r: RR, c: CC } = S;
+        for (let r = 0; r < RR; r++) {
+          let t = 0;
+          S.step({ e: 1, p: 1, title: `Row ${r}: reset the row total`, text: `rowTotal = 0 at the start of row ${r}. This line is <b>inside</b> the outer loop, so it runs once per row. Put it before the outer loop and the totals would carry over from one row to the next.`, vars: { r, rowTotal: 0 } });
+          for (let c = 0; c < CC; c++) { const v = S.get(r, c); const old = t; t = round(t + v); S.step({ e: 3, p: 3, cell: [r, c], title: `Add ${A}[${r}, ${c}]`, text: `rowTotal = ${old} + ${v} = <b>${t}</b>.`, vars: { r, c, rowTotal: t }, q: { q: `What is rowTotal now?`, a: t } }); }
+          S.print(`Row ${r} total: ${t}`);
+          S.step({ e: 5, p: 4, title: `Print the total for row ${r}`, text: `The inner loop has finished row ${r}, so its total, <b>${t}</b>, is printed. This print is inside the outer loop but after the inner loop: once per row.`, vars: { r, rowTotal: t } });
+        }
+      } },
+    { id: 'cols', name: 'Total of each column (loops swapped)', needs: 'num', hint: 'Put the column loop outside and the row loop inside: the grid is now visited column by column.',
+      code: ({ A, r, c }) => ({ erl: [`for c = 0 to ${c - 1}`, '  colTotal = 0', `  for r = 0 to ${r - 1}`, `    colTotal = colTotal + ${A}[r, c]`, '  next r', '  print("Column " + str(c) + " total: " + str(colTotal))', 'next c'], py: [`for c in range(${c}):`, '    col_total = 0', `    for r in range(${r}):`, `        col_total = col_total + ${A}[r][c]`, '    print("Column", c, "total:", col_total)'] }),
+      gen(S) {
+        const { A, r: RR, c: CC } = S;
+        for (let c = 0; c < CC; c++) {
+          let t = 0;
+          S.step({ e: 1, p: 1, title: `Column ${c}: reset the column total`, text: `The <b>column</b> loop is on the outside now, so c is fixed at ${c} while r runs down the rows. Notice the index is still written ${A}[r, c]: swapping the loops does not swap the indexes.`, vars: { c, colTotal: 0 } });
+          for (let r = 0; r < RR; r++) { const v = S.get(r, c); const old = t; t = round(t + v); S.step({ e: 3, p: 3, cell: [r, c], title: `Add ${A}[${r}, ${c}]`, text: `colTotal = ${old} + ${v} = <b>${t}</b>. The highlighted cell moves <em>down</em> the column.`, vars: { r, c, colTotal: t }, q: { q: `What is colTotal now?`, a: t } }); }
+          S.print(`Column ${c} total: ${t}`);
+          S.step({ e: 5, p: 4, title: `Print the total for column ${c}`, text: `Column ${c} adds up to <b>${t}</b>.`, vars: { c, colTotal: t } });
+        }
+      } },
+    { id: 'count', name: 'Count how many elements equal a value', needs: 'any', hint: 'A counter that goes up only when a condition is true.',
+      code: ({ A, r, c, T }) => ({ erl: ['count = 0', `for r = 0 to ${r - 1}`, `  for c = 0 to ${c - 1}`, `    if ${A}[r, c] == ${T} then`, '      count = count + 1', '    endif', '  next c', 'next r', `print(str(count) + " found")`], py: ['count = 0', `for r in range(${r}):`, `    for c in range(${c}):`, `        if ${A}[r][c] == ${T}:`, '            count = count + 1', 'print(count, "found")'] }),
+      gen(S) {
+        const { A, r: RR, c: CC, T, Tv } = S; let n = 0;
+        S.step({ e: 0, p: 0, title: 'Initialise the counter', text: `count = 0 before the loops. We are counting elements equal to ${T}${Tv === '' ? ' (an empty string: a free seat or square)' : ''}.`, vars: { count: 0 } });
+        for (let r = 0; r < RR; r++) for (let c = 0; c < CC; c++) {
+          const v = S.get(r, c); const hit = v === Tv; if (hit) n++;
+          S.step({ e: hit ? 4 : 3, p: hit ? 4 : 3, cell: [r, c], hit: hit ? [r, c] : null, title: `Is ${A}[${r}, ${c}] == ${T}?`, text: `${A}[${r}, ${c}] is ${esc(show(v))}: ${hit ? `<b>yes</b>, so count goes up to ${n}.` : '<b>no</b>, so count stays at ' + n + '.'} Note the double equals: <code>==</code> compares, a single <code>=</code> would assign.`, vars: { r, c, count: n }, q: { q: `Does ${A}[${r}, ${c}] equal ${T}? (yes/no)`, a: hit ? 'yes' : 'no', kind: 'text' } });
+        }
+        S.print(`${n} found`);
+        S.step({ e: 8, p: 5, title: 'Print the count', text: `After both loops, count = <b>${n}</b>.`, vars: { count: n } });
+      } },
+    { id: 'search', name: 'Search for a value (linear search)', needs: 'any', hint: 'Record where a value is found. This version checks every cell; a while loop could stop early.',
+      code: ({ A, r, c, T }) => ({ erl: ['found = false', `for r = 0 to ${r - 1}`, `  for c = 0 to ${c - 1}`, `    if ${A}[r, c] == ${T} then`, '      found = true', '      foundRow = r', '      foundCol = c', '    endif', '  next c', 'next r', 'if found then', '  print("Found at [" + str(foundRow) + ", " + str(foundCol) + "]")', 'else', '  print("Not found")', 'endif'], py: ['found = False', `for r in range(${r}):`, `    for c in range(${c}):`, `        if ${A}[r][c] == ${T}:`, '            found = True', '            found_row = r', '            found_col = c', 'if found:', '    print("Found at", found_row, found_col)', 'else:', '    print("Not found")'] }),
+      gen(S) {
+        const { A, r: RR, c: CC, T, Tv } = S; let found = false, fr = null, fc = null;
+        S.step({ e: 0, p: 0, title: 'Assume not found', text: `found starts as false. Searching for ${T}.`, vars: { found: 'false' } });
+        for (let r = 0; r < RR; r++) for (let c = 0; c < CC; c++) {
+          const v = S.get(r, c); const hit = v === Tv; if (hit) { found = true; fr = r; fc = c; }
+          S.step({ e: hit ? 4 : 3, p: hit ? 4 : 3, cell: [r, c], hit: hit ? [r, c] : null, title: `Is ${A}[${r}, ${c}] == ${T}?`, text: hit ? `<b>Yes.</b> found becomes true and the position [${r}, ${c}] is stored. The loops carry on, so if ${T} appears again the <em>last</em> position overwrites this one. To keep the first match and stop early, use a while loop with <code>AND NOT found</code> in its condition.` : `No. Move on to the next cell.`, vars: { r, c, found: String(found), foundRow: fr === null ? '–' : fr, foundCol: fc === null ? '–' : fc } });
+        }
+        S.print(found ? `Found at [${fr}, ${fc}]` : 'Not found');
+        S.step({ e: found ? 11 : 13, p: found ? 8 : 10, title: 'Report', text: found ? `found is true, so the position <b>[${fr}, ${fc}]</b> is printed.` : `found is still false after checking every element, so "Not found" is printed.`, vars: { found: String(found) } });
+      } },
+    { id: 'fill', name: 'Declare and initialise every element', needs: 'any', hint: 'Declaring an array reserves the space; the loops then give every element a starting value.',
+      code: ({ A, r, c, Z }) => ({ erl: [`array ${A}[${r}, ${c}]`, `for r = 0 to ${r - 1}`, `  for c = 0 to ${c - 1}`, `    ${A}[r, c] = ${Z}`, '  next c', 'next r'], py: [`${A} = [[None] * ${c} for _ in range(${r})]`, `for r in range(${r}):`, `    for c in range(${c}):`, `        ${A}[r][c] = ${Z}`] }),
+      gen(S) {
+        const { A, r: RR, c: CC, Z, Zv } = S;
+        S.blank();
+        S.step({ e: 0, p: 0, title: `Declare ${A}[${RR}, ${CC}]`, text: `The declaration reserves ${RR} × ${CC} = ${RR * CC} elements, but says nothing about their contents (shown as ·). Reading an element before you set it is a mistake, so initialise them.`, vars: {} });
+        for (let r = 0; r < RR; r++) for (let c = 0; c < CC; c++) {
+          S.set(r, c, Zv);
+          S.step({ e: 3, p: 3, cell: [r, c], title: `${A}[${r}, ${c}] = ${Z}`, text: `Element [${r}, ${c}] is given its starting value ${Z}.${r === RR - 1 && c === CC - 1 ? ` All ${RR * CC} elements are now initialised.` : ''}`, vars: { r, c } });
+        }
+      } },
+    { id: 'fn', name: 'A function that totals one row', needs: 'num', hint: 'The array is passed to a function as a parameter; the function uses one loop because the row is already chosen.',
+      code: ({ A, r, c }) => ({ erl: ['function rowTotal(arr, r)', '  total = 0', `  for c = 0 to ${c - 1}`, '    total = total + arr[r, c]', '  next c', '  return total', 'endfunction', '', `for r = 0 to ${r - 1}`, `  print("Row " + str(r) + ": " + str(rowTotal(${A}, r)))`, 'next r'], py: ['def row_total(arr, r):', '    total = 0', `    for c in range(${c}):`, '        total = total + arr[r][c]', '    return total', '', `for r in range(${r}):`, `    print("Row", r, ":", row_total(${A}, r))`] }),
+      gen(S) {
+        const { A, r: RR, c: CC } = S;
+        S.step({ e: 8, p: 6, title: 'The main program starts', text: `The function is defined first but does not run until it is called. The main loop chooses a row.`, vars: { r: 0 } });
+        for (let r = 0; r < RR; r++) {
+          S.step({ e: 9, p: 7, title: `Call rowTotal(${A}, ${r})`, text: `Execution jumps into the function. The parameter <b>arr</b> refers to the ${A} array and <b>r</b> gets the value ${r}.${G.course === 'alevel' ? ' The array is passed by reference: arr is the same block of memory, not a copy.' : ''}`, vars: { r } });
+          let t = 0;
+          S.step({ e: 1, p: 1, title: 'Inside the function: total = 0', text: `A local variable total starts at 0.`, vars: { r, total: 0 } });
+          for (let c = 0; c < CC; c++) { const v = S.get(r, c); const old = t; t = round(t + v); S.step({ e: 3, p: 3, cell: [r, c], title: `Add arr[${r}, ${c}]`, text: `arr[${r}, ${c}] is ${A}[${r}, ${c}] = ${v}. total = ${old} + ${v} = <b>${t}</b>.`, vars: { r, c, total: t }, q: { q: 'What is total now?', a: t } }); }
+          S.print(`Row ${r}: ${t}`);
+          S.step({ e: 5, p: 4, title: `return ${t}`, text: `The function hands back <b>${t}</b> and execution returns to the print line that called it, which outputs "Row ${r}: ${t}".`, vars: { r, total: t } });
+        }
+      } },
+    { id: 'transpose', name: 'Transpose into a new array (A Level)', needs: 'any', course: 'alevel', hint: 'Rows become columns. The new array has its dimensions the other way round.',
+      code: ({ A, r, c }) => ({ erl: [`array t[${c}, ${r}]`, `for r = 0 to ${r - 1}`, `  for c = 0 to ${c - 1}`, `    t[c, r] = ${A}[r, c]`, '  next c', 'next r'], py: [`t = [[None] * ${r} for _ in range(${c})]`, `for r in range(${r}):`, `    for c in range(${c}):`, `        t[c][r] = ${A}[r][c]`] }),
+      gen(S) {
+        const { A, r: RR, c: CC } = S;
+        const t = Array.from({ length: CC }, () => Array(RR).fill(null));
+        S.step({ e: 0, p: 0, title: `Declare t[${CC}, ${RR}]`, text: `The transposed array has ${CC} rows and ${RR} columns: the dimensions swap. Its elements start unset.`, vars: {}, work: miniHTML(t) });
+        for (let r = 0; r < RR; r++) for (let c = 0; c < CC; c++) {
+          const v = S.get(r, c); t[c][r] = v;
+          S.step({ e: 3, p: 3, cell: [r, c], title: `t[${c}, ${r}] = ${A}[${r}, ${c}]`, text: `The indexes swap over: what was at row ${r}, column ${c} goes to row ${c}, column ${r} of t.`, vars: { r, c }, work: miniHTML(t, [c, r]), q: { q: `Which element of t receives ${A}[${r}, ${c}]? Give row, column.`, a: `${c},${r}`, kind: 'index' } });
+        }
+      } }
+  ];
+  const round = x => Math.round(x * 1000) / 1000;
+
+  function progCtx() {
+    return { A: P.A, r: R(), c: C(), T: lit(P.target), Tv: P.target, Z: P.type === 'num' ? '0' : '""', Zv: P.type === 'num' ? 0 : '' };
+  }
+  function buildSteps(prog) {
+    const ctx = progCtx();
+    const data = P.data.map(r => r.slice());
+    const out = []; const visited = new Set(); const hits = new Set();
+    const steps = [];
+    const S = {
+      ...ctx, prev: '', lastBest: null,
+      get: (r, c) => data[r][c],
+      set: (r, c, v) => { data[r][c] = v; },
+      blank: () => { for (let r = 0; r < data.length; r++) for (let c = 0; c < data[0].length; c++) data[r][c] = null; },
+      print: s => out.push(s),
+      step: o => {
+        if (o.cell) visited.add(o.cell.join(','));
+        if (o.hit) hits.add(o.hit.join(','));
+        steps.push({ ...o, out: out.slice(), visited: new Set(visited), hits: new Set(hits), grid: data.map(r => r.slice()) });
+      }
+    };
+    prog.gen(S);
+    return steps;
+  }
+
+  /* ---------- Walkthrough component ---------- */
+  function makeWalkthrough(root, opts = {}) {
+    root.innerHTML = `<div class="controls"><button class="btn primary" data-act="next" type="button">Next step <kbd>→</kbd></button><button class="btn" data-act="finish" type="button">Run to the end</button><button class="btn" data-act="reset" type="button">Restart</button></div>
+      <div class="narration" aria-live="polite"><div class="narr-top"><span class="stage-tag ready">Ready</span><span class="step-count"></span></div><h3 class="step-title"></h3><div class="step-text"></div>
+      <div class="ask" hidden><p class="qq"></p><form autocomplete="off"><input type="text" aria-label="Your answer" spellcheck="false"><button class="btn primary" type="submit">Check</button><button class="btn" type="button" data-act="show">Show me</button></form><div class="fb" role="status"></div></div></div>
+      <div class="work"></div>`;
+    const el = { next: root.querySelector('[data-act="next"]'), finish: root.querySelector('[data-act="finish"]'), reset: root.querySelector('[data-act="reset"]'), tag: root.querySelector('.stage-tag'), count: root.querySelector('.step-count'), title: root.querySelector('.step-title'), text: root.querySelector('.step-text'), ask: root.querySelector('.ask'), qq: root.querySelector('.qq'), form: root.querySelector('form'), input: root.querySelector('input'), show: root.querySelector('[data-act="show"]'), fb: root.querySelector('.fb'), work: root.querySelector('.work') };
+    const w = { steps: [], i: -1, pending: null, intro: '' };
+    function buttons() { const done = w.i >= w.steps.length - 1; el.next.disabled = done || !w.steps.length; el.finish.disabled = done || !w.steps.length; el.reset.disabled = w.i < 0; }
+    function showIntro() { el.tag.textContent = 'Ready'; el.tag.className = 'stage-tag ready'; el.count.textContent = w.steps.length ? `${w.steps.length} steps` : ''; el.title.textContent = w.steps.length ? 'Press Next step to run the first line' : 'Nothing to run'; el.text.innerHTML = w.intro; el.work.innerHTML = ''; el.ask.hidden = true; w.pending = null; if (opts.onStep) opts.onStep(null); buttons(); }
+    function reveal(st) { w.i++; const last = w.i === w.steps.length - 1; el.tag.textContent = last ? 'Done' : `Step ${w.i + 1}`; el.tag.className = 'stage-tag' + (last ? ' done' : ''); el.count.textContent = `${w.i + 1} of ${w.steps.length}`; el.title.textContent = st.title; el.text.innerHTML = st.text; el.work.innerHTML = opts.work ? opts.work(st) : (st.work || ''); if (opts.onStep) opts.onStep(st); buttons(); }
+    function next() { if (w.pending) { el.input.focus(); return; } const st = w.steps[w.i + 1]; if (!st) return; if (G.quiz && st.q) { w.pending = st; el.qq.textContent = st.q.q; el.input.value = ''; el.fb.textContent = ''; el.fb.className = 'fb'; el.ask.hidden = false; el.input.focus({ preventScroll: true }); } else reveal(st); }
+    el.form.addEventListener('submit', ev => { ev.preventDefault(); if (!w.pending) return; const ok = checkAnswer(el.input.value, w.pending.q); if (ok) { G.score[0]++; G.score[1]++; renderScore(); el.fb.textContent = 'Correct.'; el.fb.className = 'fb ok'; const st = w.pending; w.pending = null; setTimeout(() => { el.ask.hidden = true; reveal(st); }, 450); } else { el.fb.textContent = 'Not quite. Try again, or press Show me.'; el.fb.className = 'fb bad'; } });
+    el.show.addEventListener('click', () => { if (!w.pending) return; G.score[1]++; renderScore(); const st = w.pending; w.pending = null; el.ask.hidden = true; reveal(st); });
+    el.next.addEventListener('click', next);
+    el.finish.addEventListener('click', () => { w.pending = null; el.ask.hidden = true; while (w.i < w.steps.length - 1) reveal(w.steps[w.i + 1]); });
+    el.reset.addEventListener('click', () => { w.i = -1; showIntro(); });
+    return { load(steps, intro = '') { w.steps = steps || []; w.i = -1; w.intro = intro; showIntro(); }, next };
+  }
+  function checkAnswer(given, q) {
+    const g = String(given).trim(); const kind = q.kind || (typeof q.a === 'number' ? 'num' : 'text');
+    if (kind === 'num') { const n = Number(g.replace(/[−]/g, '-')); return g !== '' && isFinite(n) && Math.abs(n - Number(q.a)) < 1e-9; }
+    if (kind === 'index') { const m = /(-?\d+)\D+(-?\d+)/.exec(g); return !!m && `${m[1]},${m[2]}` === q.a; }
+    const l = g.toLowerCase().replace(/^"|"$/g, ''); const a = String(q.a).toLowerCase();
+    if (a === 'yes') return l === 'yes' || l === 'y' || l === 'true'; if (a === 'no') return l === 'no' || l === 'n' || l === 'false';
+    if (a === '') return l === '' || l === '""' || l === 'empty' || l === 'nothing';
+    return l === a;
+  }
+  function renderScore() { $('#score').textContent = `${G.score[0]} / ${G.score[1]}`; $('#scoreBox').hidden = !G.quiz; }
+  $('#quizOn').addEventListener('change', ev => { G.quiz = ev.target.checked; renderScore(); });
+
+  /* ---------- Trace tab ---------- */
+  let curProg = null, curSteps = [];
+  const WT = makeWalkthrough($('#wt-trace'), {
+    onStep: st => renderTraceGrid(st),
+    work: st => `<div class="state"><div><div class="statehead">Variables</div><div class="vars">${Object.entries(st.vars || {}).map(([k, v]) => `<span>${esc(k)} = <b>${esc(String(v))}</b></span>`).join('')}</div></div><div><div class="statehead">Output</div><div class="outbox">${st.out.map(esc).join('\n')}</div></div>${st.work ? `<div><div class="statehead">New array t</div>${st.work}</div>` : ''}</div>`
+  });
+  function renderTraceGrid(st) {
+    $('#trGrid').innerHTML = gridHTML(st ? st.grid : P.data, P.A, st ? { cur: st.cell, row: st.cell ? st.cell[0] : undefined, col: st.cell ? st.cell[1] : undefined, visited: st.visited, hits: st.hits } : {});
+    document.querySelectorAll('#traceCode .ln').forEach((ln, i) => ln.classList.toggle('cur', !!st && i === (G.lang === 'erl' ? st.e : st.p)));
+  }
+  function fillProgs() {
+    const sel = $('#progSel'); const keep = sel.value; sel.innerHTML = '';
+    PROGS.filter(p => !p.course || p.course === G.course).forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name + (p.needs === 'num' && P.type !== 'num' ? ' (needs numbers)' : ''); o.disabled = p.needs === 'num' && P.type !== 'num'; sel.appendChild(o); });
+    if ([...sel.options].some(o => o.value === keep && !o.disabled)) sel.value = keep; else sel.value = [...sel.options].find(o => !o.disabled).value;
+  }
+  function renderCode() {
+    const code = curProg.code(progCtx())[G.lang];
+    $('#traceCode').innerHTML = code.map(l => `<span class="ln${/^(function|def|endfunction|  return|    return)/.test(l) ? ' fn' : ''}">${esc(l) || ' '}</span>`).join('');
+    $('#langLabel').textContent = G.lang === 'erl' ? (G.course === 'gcse' ? 'OCR Exam Reference Language' : 'OCR pseudocode') : 'Python';
+  }
+  function traceLoad() {
+    curProg = PROGS.find(p => p.id === $('#progSel').value);
+    $('#progHint').textContent = curProg.hint;
+    renderCode();
+    curSteps = buildSteps(curProg);
+    WT.load(curSteps, `${curSteps.length} steps. The grid on the right shows which element each line touches.`);
+  }
+  $('#progSel').addEventListener('change', traceLoad);
+
+  /* ---------- Memory tab ---------- */
+  let memSel = [0, 0];
+  function renderMemory() {
+    const base = Number($('#baseAddr').value) || 0, size = Number($('#elemSize').value);
+    const rows = R(), cols = C(); const [r, c] = memSel;
+    $('#memGrid').innerHTML = gridHTML(P.data, P.A, { sel: [r, c], row: r, col: c });
+    let s = '';
+    for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) { const n = i * cols + j; s += `<div class="memcell${i === r && j === c ? ' sel' : ''}${i === r ? ' rowhl' : ''}" data-r="${i}" data-c="${j}" role="button" tabindex="0"><small>[${i}, ${j}]</small><b>${esc(show(P.data[i][j]))}</b><i>${base + n * size}</i></div>`; }
+    $('#memStrip').innerHTML = s;
+    const n = r * cols + c;
+    $('#memCalc').innerHTML = `<div>address of ${esc(P.A)}[<span class="r">${r}</span>, <span class="c">${c}</span>]</div><div>= base + (<span class="r">row</span> × columns + <span class="c">col</span>) × size</div><div>= ${base} + (<span class="r">${r}</span> × ${cols} + <span class="c">${c}</span>) × ${size}</div><div>= ${base} + ${n} × ${size} = <b>${base + n * size}</b></div><div class="hint" style="font-family:var(--font-body)">It is element number ${n} of ${rows * cols}, counting from 0 along the rows. Row ${r} starts at ${base + r * cols * size} and each row is ${cols} × ${size} = ${cols * size} bytes long.</div>`;
+  }
+  const memPick = ev => { const el = ev.target.closest('[data-r]'); if (!el || !el.dataset.c) return; memSel = [+el.dataset.r, +el.dataset.c]; renderMemory(); };
+  $('#memGrid').addEventListener('click', memPick); $('#memStrip').addEventListener('click', memPick);
+  $('#baseAddr').addEventListener('input', renderMemory); $('#elemSize').addEventListener('change', renderMemory);
+
+  /* ---------- Exam questions ---------- */
+  const codeBlock = lines => `<pre class="code">${lines.map(l => `<span class="ln">${esc(l) || ' '}</span>`).join('')}</pre>`;
+  const EXAM = [
+    { course: 'both', marks: 2, q: `A program stores the seating plan for a classroom with 4 rows of 5 seats. Write a line of code to declare a two-dimensional array called <code>seats</code> suitable for storing the name in each seat.`,
+      erl: ['array seats[4, 5]'], py: ['seats = [[""] * 5 for _ in range(4)]'],
+      mp: ['Uses the array keyword / creates a 2D structure named seats (1)', 'Correct dimensions 4 and 5, in a consistent order (1)', 'Note: <code>seats[5, 4]</code> is also acceptable if the candidate is consistent about which index is the row'] },
+    { course: 'both', marks: 1, q: `Using the array <code>seats</code> above, with the first index as the row, write the index of the seat in the third row, second column.`,
+      erl: ['seats[2, 1]'], mp: ['seats[2, 1] (1). Rows and columns are counted from 0, so the third row is 2 and the second column is 1.'] },
+    { course: 'both', marks: 4, q: `Write an algorithm that outputs every name in <code>seats</code>, one per line.`,
+      erl: ['for r = 0 to 3', '  for c = 0 to 4', '    print(seats[r, c])', '  next c', 'next r'], py: ['for r in range(4):', '    for c in range(5):', '        print(seats[r][c])'],
+      mp: ['Outer loop covering all rows 0 to 3 (1)', 'Inner loop covering all columns 0 to 4, nested inside the outer loop (1)', 'Correct access using both loop variables, seats[r, c] (1)', 'Output statement inside the inner loop (1)'] },
+    { course: 'both', marks: 3, q: `An empty seat is stored as the empty string <code>""</code>. Write an algorithm that counts the empty seats and outputs the count.`,
+      erl: ['count = 0', 'for r = 0 to 3', '  for c = 0 to 4', '    if seats[r, c] == "" then', '      count = count + 1', '    endif', '  next c', 'next r', 'print(count)'],
+      mp: ['Counter initialised to 0 before the loops and output after them (1)', 'Nested loops checking every element with a correct comparison to "" (1)', 'Counter incremented only when the condition is true (1)'] },
+    { course: 'both', marks: 2, q: `Explain one advantage of storing the seating plan in a two-dimensional array rather than in five separate one-dimensional arrays, one per row.`,
+      mp: ['One identifier / data structure holds all the data (1) so it is easier to pass around and manage (1)', 'OR: the whole plan can be processed with nested loops (1) instead of repeating the same code for each row (1)', 'OR: the structure matches the real layout of rows and seats (1), making the code easier to read and less error-prone (1)'] },
+    { course: 'both', marks: 3, q: `The array <code>scores</code> holds the quiz scores for 4 students over 5 rounds. State what is output when this code runs with the scores shown on the Explore tab (first example).<br>` + codeBlock(['total = 0', 'for c = 0 to 4', '  total = total + scores[1, c]', 'next c', 'print(total)']),
+      mp: ['Recognises that only row 1 (the second student) is used (1)', 'Adds 5 + 5 + 10 + 7 + 8 (1)', 'Outputs 35 (1)'] },
+    { course: 'both', marks: 4, q: `Write an algorithm to find the highest score in <code>scores[4, 5]</code> and output it.`,
+      erl: ['highest = scores[0, 0]', 'for r = 0 to 3', '  for c = 0 to 4', '    if scores[r, c] > highest then', '      highest = scores[r, c]', '    endif', '  next c', 'next r', 'print(highest)'],
+      mp: ['highest initialised to a sensible value, such as the first element (1)', 'Nested loops visiting every element (1)', 'Comparison of each element with highest, updating highest when the element is bigger (1)', 'highest output after the loops (1)'] },
+    { course: 'gcse', marks: 2, q: `A programmer writes <code>for c = 0 to 5</code> for the inner loop of the seating plan program. Identify the error and explain its effect.`,
+      mp: ['The loop goes to 5 but the columns are 0 to 4 (1)', 'seats[r, 5] does not exist, so the program crashes with an index out of range error (or reads invalid data) (1)'] },
+    { course: 'alevel', marks: 3, q: `Describe how a two-dimensional array is stored in memory and how the address of an individual element is found.`,
+      mp: ['Stored as one contiguous block, with every element the same size and type (1)', 'Row after row (row-major order), so row 1 follows all of row 0 (1)', 'Address = base address + (row × number of columns + column) × element size, giving direct access to any element (1)'] },
+    { course: 'alevel', marks: 6, q: `Write a function <code>rowTotal</code> that takes the array <code>scores[4, 5]</code> and a row number as parameters and returns the total for that row. Then write code that uses the function to output the total of every row.`,
+      erl: ['function rowTotal(arr, row)', '  total = 0', '  for c = 0 to 4', '    total = total + arr[row, c]', '  next c', '  return total', 'endfunction', '', 'for r = 0 to 3', '  print("Row " + str(r) + ": " + str(rowTotal(scores, r)))', 'next r'],
+      mp: ['Function header with two parameters (1)', 'Local total initialised to 0 (1)', 'Loop over the columns adding arr[row, c] (1)', 'Returns total (1)', 'Loop over all rows in the main program (1)', 'Calls the function with scores and the row, and outputs the result (1)'] },
+    { course: 'alevel', marks: 3, q: `A weather station stores a reading every hour for each of 7 days, for 4 different sensors. The programmer declares <code>array readings[7, 24, 4]</code>. State the number of elements in the array and write a statement that stores the value 18.5 for the third sensor at 09:00 on the first day.`,
+      erl: ['readings[0, 9, 2] = 18.5'],
+      mp: ['7 × 24 × 4 = 672 elements (1)', 'Indexes 0, 9, 2 (all counted from 0) (1)', 'Assignment of 18.5 to that element (1)'] },
+    { course: 'alevel', marks: 4, q: `A noughts and crosses board is stored in <code>board[3, 3]</code>, with "X", "O" or "" in each element. Write an algorithm that outputs true if any <em>row</em> contains three Xs, and false otherwise.`,
+      erl: ['win = false', 'for r = 0 to 2', '  if board[r, 0] == "X" AND board[r, 1] == "X" AND board[r, 2] == "X" then', '    win = true', '  endif', 'next r', 'print(win)'],
+      mp: ['Flag initialised to false and output at the end (1)', 'Loop over the three rows (1)', 'Condition tests all three elements of the row against "X" with AND (1)', 'Flag set to true when the condition holds, without being reset to false by other rows (1)'] },
+    { course: 'alevel', marks: 2, q: `A procedure <code>reset(board)</code> sets every element of the board to "". Explain why the array should be passed by reference rather than by value.`,
+      mp: ['By reference passes the address, so the procedure changes the original array and the caller sees the reset board (1)', 'By value would copy the whole array, wasting memory and time, and the changes would be lost when the copy is discarded (1)'] }
+  ];
+  function renderExam() {
+    const list = EXAM.filter(x => x.course === 'both' || x.course === G.course);
+    $('#examHead').textContent = `Exam-style questions: ${G.course === 'gcse' ? 'GCSE J277' : 'A Level H446'}`;
+    $('#examList').innerHTML = list.map((x, i) => {
+      const code = x.erl ? (G.lang === 'py' && x.py ? x.py : x.erl) : null;
+      return `<div class="qcard"><div class="qhead"><h3>Question ${i + 1}</h3><span class="marks">${x.marks} mark${x.marks === 1 ? '' : 's'}</span></div><div>${x.q}</div><button class="btn" type="button" data-reveal="${i}">Show answer</button><div class="answer" hidden>${code ? `<div class="mp">Example answer${x.erl && !x.py && G.lang === 'py' ? ' (OCR notation)' : ''}</div>${codeBlock(code)}` : ''}<div class="mp">Mark points</div><ul>${x.mp.map(m => `<li>${m}</li>`).join('')}</ul></div></div>`;
+    }).join('');
+  }
+  $('#examList').addEventListener('click', ev => { const b = ev.target.closest('[data-reveal]'); if (!b) return; const a = b.nextElementSibling; a.hidden = !a.hidden; b.textContent = a.hidden ? 'Show answer' : 'Hide answer'; });
+
+  /* ---------- Quick quiz ---------- */
+  const Q = { cur: null, score: [0, 0] };
+  const rnd = n => Math.floor(Math.random() * n);
+  const QT = {
+    value() { const r = rnd(R()), c = rnd(C()); const v = P.data[r][c]; return { prompt: `What is the value of <code>${P.A}[${r}, ${c}]</code>?`, fields: [{ id: 'a', label: 'Value', a: v, kind: P.type === 'num' ? 'num' : 'text' }], grid: {}, reveal: show(v) }; },
+    index() { const r = rnd(R()), c = rnd(C()); const v = P.data[r][c]; let count = 0; P.data.forEach(row => row.forEach(x => { if (x === v) count++; })); if (count > 1) return QT.value(); return { prompt: `Which element holds the value <b>${esc(show(v))}</b>? Give the index as row, column.`, fields: [{ id: 'a', label: 'Index (row, column)', a: `${r},${c}`, kind: 'index' }], grid: {}, reveal: `${P.A}[${r}, ${c}]` }; },
+    size() {
+      const k = rnd(3);
+      if (k === 0) return { prompt: `How many elements does <code>array ${P.A}[${R()}, ${C()}]</code> hold?`, fields: [{ id: 'a', label: 'Number of elements', a: R() * C(), kind: 'num' }], grid: {}, reveal: `${R()} × ${C()} = ${R() * C()}` };
+      if (k === 1) return { prompt: `What is the index of the <b>last</b> element (bottom-right) of <code>array ${P.A}[${R()}, ${C()}]</code>?`, fields: [{ id: 'a', label: 'Index (row, column)', a: `${R() - 1},${C() - 1}`, kind: 'index' }], grid: {}, reveal: `${P.A}[${R() - 1}, ${C() - 1}]: indexes start at 0` };
+      const bad = Math.random() < 0.5; const r = bad ? R() : rnd(R()), c = bad ? rnd(C()) : (Math.random() < 0.5 ? C() : rnd(C()));
+      const valid = r < R() && c < C();
+      return { prompt: `Is <code>${P.A}[${r}, ${c}]</code> a valid element of <code>array ${P.A}[${R()}, ${C()}]</code>? (yes/no)`, fields: [{ id: 'a', label: 'yes or no', a: valid ? 'yes' : 'no', kind: 'text' }], grid: {}, reveal: valid ? 'Yes: both indexes are within 0 to size − 1.' : `No: the valid rows are 0 to ${R() - 1} and columns 0 to ${C() - 1}. This is an out-of-bounds error.` };
+    },
+    trace() {
+      if (P.type !== 'num') return QT.value();
+      const k = rnd(3);
+      if (k === 0) { const r1 = rnd(R()), c1 = rnd(C()), r2 = rnd(R()), c2 = rnd(C()); const v = round(P.data[r1][c1] + P.data[r2][c2]); return { prompt: `What is output?` + codeBlock(G.lang === 'erl' ? [`print(${P.A}[${r1}, ${c1}] + ${P.A}[${r2}, ${c2}])`] : [`print(${P.A}[${r1}][${c1}] + ${P.A}[${r2}][${c2}])`]), fields: [{ id: 'a', label: 'Output', a: v, kind: 'num' }], grid: {}, reveal: `${P.data[r1][c1]} + ${P.data[r2][c2]} = ${v}` }; }
+      if (k === 1) { const r = rnd(R()); const t = round(P.data[r].reduce((a, b) => a + b, 0)); return { prompt: `What is output?` + codeBlock(G.lang === 'erl' ? ['total = 0', `for c = 0 to ${C() - 1}`, `  total = total + ${P.A}[${r}, c]`, 'next c', 'print(total)'] : ['total = 0', `for c in range(${C()}):`, `    total = total + ${P.A}[${r}][c]`, 'print(total)']), fields: [{ id: 'a', label: 'Output', a: t, kind: 'num' }], grid: {}, reveal: `Only row ${r} is used: ${P.data[r].join(' + ')} = ${t}` }; }
+      const c = rnd(C()); let t = 0; for (let r = 0; r < R(); r++) t += P.data[r][c]; t = round(t);
+      return { prompt: `What is output?` + codeBlock(G.lang === 'erl' ? ['total = 0', `for r = 0 to ${R() - 1}`, `  total = total + ${P.A}[r, ${c}]`, 'next r', 'print(total)'] : ['total = 0', `for r in range(${R()}):`, `    total = total + ${P.A}[r][${c}]`, 'print(total)']), fields: [{ id: 'a', label: 'Output', a: t, kind: 'num' }], grid: {}, reveal: `Only column ${c} is used: ${P.data.map(row => row[c]).join(' + ')} = ${t}` };
+    }
+  };
+  function newQuestion() {
+    let t = $('#qType').value; if (t === 'mix') t = ['value', 'index', 'size', 'trace'][rnd(4)];
+    Q.cur = QT[t](); Q.cur.done = false;
+    $('#qPrompt').innerHTML = Q.cur.prompt;
+    $('#qFields').innerHTML = Q.cur.fields.map(f => `<label>${f.label}<input type="text" id="q_${f.id}" autocomplete="off" spellcheck="false"></label>`).join('');
+    $('#qForm').hidden = false; $('#qFb').textContent = ''; $('#qFb').className = 'fb';
+    $('#qGrid').innerHTML = gridHTML(P.data, P.A, {});
+    const first = $('#qFields input'); if (first) first.focus({ preventScroll: true });
+  }
+  $('#newQ').addEventListener('click', newQuestion);
+  $('#qForm').addEventListener('submit', ev => {
+    ev.preventDefault(); if (!Q.cur) return;
+    const wrong = Q.cur.fields.filter(f => !checkAnswer($('#q_' + f.id).value, f));
+    if (!Q.cur.done) { Q.score[1]++; if (!wrong.length) Q.score[0]++; Q.cur.done = true; $('#pScore').textContent = `Score: ${Q.score[0]} / ${Q.score[1]}`; }
+    if (!wrong.length) { $('#qFb').textContent = 'Correct.'; $('#qFb').className = 'fb ok'; } else { $('#qFb').innerHTML = `Not quite. ${Q.cur.reveal}`; $('#qFb').className = 'fb bad'; }
+  });
+  $('#qReveal').addEventListener('click', () => { if (!Q.cur) return; if (!Q.cur.done) { Q.score[1]++; Q.cur.done = true; $('#pScore').textContent = `Score: ${Q.score[0]} / ${Q.score[1]}`; } $('#qFb').innerHTML = Q.cur.reveal; $('#qFb').className = 'fb'; });
+
+  /* ---------- Tabs, course, language ---------- */
+  const TABS = ['explore', 'trace', 'memory', 'exam', 'quiz'];
+  let curTab = 'explore';
+  function showTab(id) { if (id === 'memory' && G.course !== 'alevel') id = 'explore'; curTab = id; TABS.forEach(t => { $('#tab-' + t).hidden = t !== id; }); document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === id ? 'true' : 'false')); if (id === 'memory') renderMemory(); }
+  $('#tabs').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) showTab(b.dataset.tab); });
+  $('#courseSeg').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; G.course = b.dataset.pick; document.body.dataset.course = G.course; document.querySelectorAll('#courseSeg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); if (curTab === 'memory' && G.course !== 'alevel') showTab('explore'); fillProgs(); traceLoad(); renderExam(); });
+  $('#langSeg').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; G.lang = b.dataset.lang; document.querySelectorAll('#langSeg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); renderExplore(); renderCode(); renderTraceGrid(curSteps[WTindex()] || null); renderExam(); });
+  function WTindex() { const n = Number(($('#wt-trace .step-count').textContent.match(/^(\d+) of/) || [])[1]); return n ? n - 1 : -1; }
+
+  document.addEventListener('keydown', ev => { if (ev.key !== 'ArrowRight' || ev.altKey || ev.metaKey || ev.ctrlKey) return; const tag = (ev.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') return; if (curTab === 'trace') { ev.preventDefault(); WT.next(); } });
+
+  function renderAll(keepProg) {
+    renderExplore();
+    fillProgs(); traceLoad();
+    if (curTab === 'memory') renderMemory();
+    if (Q.cur) { $('#qGrid').innerHTML = gridHTML(P.data, P.A, {}); }
+  }
+  PRESETS.forEach((p, i) => { const o = document.createElement('option'); o.value = i; o.textContent = p.name; $('#preset').appendChild(o); });
+  $('#preset').addEventListener('change', ev => { loadPreset(+ev.target.value); if (Q.cur) { Q.cur = null; $('#qPrompt').innerHTML = 'The array changed. Press <b>New question</b>.'; $('#qForm').hidden = true; } });
+  document.body.dataset.course = 'gcse';
+  try { const h = location.hash.slice(1); if (TABS.includes(h)) curTab = h; } catch (_) {}
+  loadPreset(0);
+  renderExam();
+  renderScore();
+  showTab(curTab);
+})();
+</script>
+
+</body></html>
