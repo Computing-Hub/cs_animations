@@ -1,0 +1,130 @@
+WEBVTT
+
+00:00.300 --> 00:07.020
+The fetch, decode, execute cycle: how a CPU runs a program, one instruction at a time.
+
+00:08.233 --> 00:12.201
+A CPU runs a program by repeating three steps.
+
+00:12.501 --> 00:15.232
+Fetch: get the next instruction from memory.
+
+00:15.682 --> 00:18.669
+Decode: work out what the instruction means.
+
+00:19.119 --> 00:21.700
+Execute: carry the instruction out.
+
+00:22.150 --> 00:26.587
+Then it starts again. This happens billions of times every second.
+
+00:28.050 --> 00:34.877
+Here is a simplified computer: the CPU on the left, and main memory (RAM) on the right.
+
+00:35.617 --> 00:42.251
+RAM holds the program's instructions and its data. Every location has its own address.
+
+00:43.017 --> 00:47.113
+The Program Counter holds the address of the next instruction.
+
+00:48.017 --> 00:54.374
+The Memory Address Register holds the address the CPU is about to read from, or write to.
+
+00:55.117 --> 01:01.197
+The Memory Data Register holds the instruction or data that has just been fetched from memory.
+
+01:01.950 --> 01:06.942
+The Control Unit decodes each instruction and coordinates the other parts.
+
+01:07.683 --> 01:13.934
+The ALU does the arithmetic and logic. Its results are stored in the Accumulator.
+
+01:14.683 --> 01:19.803
+FETCH. The Program Counter holds 0: the address of the next instruction.
+
+01:20.550 --> 01:23.558
+That address is copied into the MAR.
+
+01:24.550 --> 01:29.713
+It travels along the address bus, and memory location 0 is selected.
+
+01:30.450 --> 01:35.783
+The instruction stored there comes back along the data bus, into the MDR.
+
+01:36.517 --> 01:41.743
+The Program Counter increases by 1, so it now points to the next instruction.
+
+01:42.517 --> 01:47.765
+DECODE. The instruction is passed to the Control Unit, which works out what it means.
+
+01:48.883 --> 01:55.305
+LDA means load a value into the Accumulator. 5 is the address of that value.
+
+01:56.050 --> 01:59.378
+EXECUTE. The address 5 is placed in the MAR...
+
+02:00.250 --> 02:03.258
+...and memory location 5 is selected.
+
+02:04.017 --> 02:08.475
+The data stored there, the number 7, is copied into the MDR...
+
+02:09.317 --> 02:13.903
+...and then loaded into the Accumulator. The instruction is complete.
+
+02:14.650 --> 02:18.149
+Now the cycle starts again with the next instruction.
+
+02:18.883 --> 02:25.219
+FETCH. The address in the Program Counter, 1, goes to the MAR and along the address bus.
+
+02:25.983 --> 02:31.402
+The instruction ADD 6 comes back along the data bus, into the MDR.
+
+02:32.150 --> 02:34.987
+The Program Counter increases to 2.
+
+02:35.750 --> 02:41.617
+DECODE. The Control Unit decodes it: add the number at address 6 to the Accumulator.
+
+02:42.350 --> 02:45.358
+EXECUTE. The address 6 is sent to memory...
+
+02:46.850 --> 02:50.882
+...and the data stored there, 5, is fetched into the MDR.
+
+02:51.783 --> 02:56.413
+The ALU adds it to the 7 that is already in the Accumulator.
+
+02:57.417 --> 03:01.086
+The result, 12, is stored back in the Accumulator.
+
+03:01.917 --> 03:05.117
+FETCH. Third cycle: address 2 goes to memory...
+
+03:05.917 --> 03:11.271
+...the instruction STA 7 comes back, and the Program Counter becomes 3.
+
+03:12.017 --> 03:17.158
+DECODE. STA means store: put the Accumulator's value into address 7.
+
+03:17.917 --> 03:23.997
+EXECUTE. The address 7 goes to the MAR, and the value 12 goes to the MDR.
+
+03:24.750 --> 03:31.406
+The data bus carries it to memory location 7. The answer to 7 + 5 has been saved.
+
+03:32.183 --> 03:38.498
+The next instructions are OUT, which outputs the 12, and HLT, which halts the program.
+
+03:39.900 --> 03:49.820
+Fetch. The address in the PC is copied to the MAR. The instruction is fetched from memory into the MDR. The PC increases by 1.
+
+03:50.320 --> 03:55.973
+Decode. The Control Unit works out what the instruction means, and what data it needs.
+
+03:56.473 --> 04:04.367
+Execute. The instruction is carried out. Calculations are done by the ALU. Results are stored in the Accumulator.
+
+04:04.867 --> 04:13.720
+Clock speed is the number of cycles per second. A 3 GHz CPU can carry out about 3 billion cycles every second.
