@@ -443,19 +443,19 @@
 
   function layout(){
     const L={cw:W/Math.max(1,arr.length)};
-    if(algo()==='insertion'){ L.ch=62; L.keyY=14; L.arrY=14+62+22; L.H=L.arrY+62+30; }
+    if(algo()==='insertion'){ L.ch=54; L.keyY=14; L.arrY=14+54+22; L.H=L.arrY+54+30; }
     else if(isTree()){
       L.ch=54; L.arrY=14; L.treeTop=L.arrY+54+48;
       const rows=Math.max(1,tree.rows);
       L.rowH = rows>9 ? Math.max(42,Math.floor(540/rows)) : 58;
       L.cellH = L.rowH-24;
       L.H=L.treeTop+rows*L.rowH+6;
-    } else { L.ch=72; L.arrY=(220-72)/2-6; L.H=220; }
+    } else { L.ch=54; L.arrY=20; L.H=20+54+30; }
     return L;
   }
 
   function drawArray(L){
-    const cw=L.cw, font=Math.min(22, Math.max(13, cw*0.38));
+    const cw=L.cw, font=Math.min(18, Math.max(12, cw*0.3));
     for(let i=0;i<arr.length;i++){
       const x=i*cw+3, w=cw-6;
       const inSorted = view.sorted.has(i) || (algo()==='insertion' && (i<view.prefix || (view.ins && i<=view.ins.pass)));
