@@ -58,6 +58,7 @@
     <label>Bits
       <select id="width"><option>4</option><option selected>8</option><option>16</option></select>
     </label>
+    <button id="rand">🎲 New numbers</button>
     <button id="play">⏸ Pause</button>
     <button id="step">⏭ Step</button>
   </div>
@@ -208,11 +209,29 @@
   });
   document.getElementById('step').addEventListener('click',()=>{ running=false;
     document.getElementById('play').textContent='▶ Play'; stepOnce=true; });
-  ['a','b','op','width'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
-    op=document.getElementById('op').value; width=parseInt(document.getElementById('width').value,10); compute();
-  }));
+  // Random A and B that fit the chosen width. For shifts, B is the shift amount (1 to width-1).
+  function randomise(){
+    const max=(1<<width)-1;
+    document.getElementById('a').value=1+Math.floor(Math.random()*max);
+    document.getElementById('b').value= (op==='shl'||op==='shr')
+      ? 1+Math.floor(Math.random()*(width-1))
+      : 1+Math.floor(Math.random()*max);
+  }
+  function readControls(){ op=document.getElementById('op').value; width=parseInt(document.getElementById('width').value,10); }
+  ['a','b'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{ readControls(); compute(); }));
+  // Changing the operation keeps the same bytes, so students can compare operations on them;
+  // a shift needs a small shift amount, so B is re-picked for shifts.
+  document.getElementById('op').addEventListener('input',()=>{
+    const wasShift=(op==='shl'||op==='shr'); readControls();
+    const isShift=(op==='shl'||op==='shr');
+    if(isShift && !wasShift) document.getElementById('b').value=1+Math.floor(Math.random()*(width-1));
+    if(!isShift && wasShift) document.getElementById('b').value=1+Math.floor(Math.random()*((1<<width)-1));
+    compute();
+  });
+  document.getElementById('width').addEventListener('input',()=>{ readControls(); randomise(); compute(); });
+  document.getElementById('rand').addEventListener('click',()=>{ readControls(); randomise(); compute(); });
 
-  compute();
+  readControls(); randomise(); compute();
   requestAnimationFrame(frame);
 })();
 </script>
