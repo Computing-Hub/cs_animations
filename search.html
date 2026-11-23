@@ -33,7 +33,7 @@
 <div class="wrap">
   <a class="back" href="index.html">← all animations</a>
   <h1>SEARCHING: LINEAR vs BINARY</h1>
-  <p class="sub">Linear search works on <em>any</em> array — sorted or not. Binary search needs a sorted array to halve the range. Both rows below hold the <em>same values</em>, just in different orders, and search for the same target.</p>
+  <p class="sub">Both searches run on the <em>same sorted array</em> and look for the same target, so you can compare them step for step. Linear search checks every item from the start; binary search checks the middle and throws away half of what is left each time. (Linear search would also work on an unsorted array; binary search would not.)</p>
 
   <div class="stage"><canvas id="cv"></canvas></div>
 
@@ -62,14 +62,13 @@
   let running=false, stepOnce=false;
   let lin, bin; // search state objects
 
-  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
   function newArray(keepTarget){
     // build a sorted base array of distinct values
     arrBin=[]; let v=1+Math.floor(Math.random()*6);
     for(let i=0;i<n;i++){ arrBin.push(v); v+=1+Math.floor(Math.random()*6); }
-    // linear gets a shuffled copy — same values, different order
-    arrLin=shuffle(arrBin.slice());
+    // both searches use the same sorted array, so the comparison is fair
+    arrLin=arrBin.slice();
     if(!keepTarget) target=arrBin[Math.floor(Math.random()*n)];
     document.getElementById('target').value=target;
     reset();
@@ -170,8 +169,8 @@
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle=css('--bg'); ctx.fillRect(0,0,W,H);
     const res=(s,name)=> s.found>=0?('found at '+s.found):(s.done?'not found':'') ;
-    drawArray(48, 'LINEAR  O(n)  — unsorted   target = '+target, 'comparisons: '+lin.cmp+'   '+res(lin), linClass, arrLin);
-    drawArray(190,'BINARY  O(log n)  — sorted', 'comparisons: '+bin.cmp+'   '+res(bin), binClass, arrBin);
+    drawArray(48, 'LINEAR  O(n)   target = '+target, 'comparisons: '+lin.cmp+'   '+res(lin), linClass, arrLin);
+    drawArray(190,'BINARY  O(log n)   target = '+target, 'comparisons: '+bin.cmp+'   '+res(bin), binClass, arrBin);
   }
 
   let last=performance.now();
