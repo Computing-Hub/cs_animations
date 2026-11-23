@@ -37,6 +37,17 @@
   td.visited{background:rgba(47,109,240,.18);color:#bff8ff}
   td.locked{background:rgba(25,255,155,.22);color:#bfffe0;font-weight:700}
   td.first{color:#8aa0c8}
+  td.updated{background:rgba(255,176,46,.24);color:#ffe6b0;font-weight:700}
+  td.checking{outline:2px dashed var(--cur);outline-offset:-3px}
+  .narrate{display:flex;gap:12px;align-items:flex-start;margin-top:12px;padding:10px 12px;
+    background:var(--panel);border:1px solid var(--edge);border-radius:10px;min-height:46px}
+  .phase{flex:none;font-size:11px;font-weight:700;letter-spacing:.08em;padding:4px 8px;border-radius:6px;
+    border:1px solid var(--edge);color:#8aa0c8;min-width:84px;text-align:center}
+  .phase[data-p="VISIT"]{color:var(--start);border-color:var(--start)}
+  .phase[data-p="CHECK"]{color:#8aa0c8;border-color:#8aa0c8}
+  .phase[data-p="UPDATE"]{color:var(--cur);border-color:var(--cur)}
+  .phase[data-p="DONE"]{color:var(--path);border-color:var(--path)}
+  #explain{font-size:13px;line-height:1.5;color:#dbe8ff}
   .hint{color:#5f7099;font-size:12px;margin-top:8px}
 </style>
 </head>
@@ -44,11 +55,16 @@
 <div class="wrap">
   <a class="back" href="index.html">← all animations</a>
   <h1>SHORTEST PATH — DIJKSTRA &amp; A*</h1>
-  <p class="sub">Find the shortest path from <b>A</b> to <b>H</b> on a random weighted graph. Each step locks in one node; the table shows how distances and predecessors update.
+  <p class="sub">Find the shortest path from <b>A</b> to <b>H</b> on a random weighted graph. Each <b>Step</b> does one thing: visit (lock in) a node, or check one of its neighbours and update its cost if the new route is cheaper. The table gets one row per visit.
   <b>Dijkstra</b> finds the shortest path from A to <em>every</em> node, so it keeps going until all of them are locked in, always choosing the unvisited node with the lowest cost so far.
   <b>A*</b> is aimed at one goal: it adds a heuristic (the straight-line distance to H) and stops as soon as H is locked in, so it usually locks in fewer nodes.</p>
 
   <div class="stage"><canvas id="cv"></canvas></div>
+
+  <div class="narrate" aria-live="polite">
+    <span class="phase" id="phase">READY</span>
+    <span id="explain">Press Step to visit the first node, then check its neighbours one at a time.</span>
+  </div>
 
   <div class="controls">
     <select id="algo">
@@ -62,18 +78,20 @@
     <label>Speed <input id="speed" type="range" min="1" max="6" step="1" value="2" /></label>
   </div>
 
-  <div class="stats">Step: <b id="stp">0</b> &nbsp;·&nbsp; Nodes locked in: <b id="locked">0</b> of 8 &nbsp;·&nbsp; Status: <b id="status">ready</b> &nbsp;·&nbsp; Path: <b id="pathtxt">–</b> &nbsp;·&nbsp; Cost: <b id="cost">–</b></div>
+  <div class="stats">Nodes visited: <b id="locked">0</b> of 8 &nbsp;·&nbsp;<span id="stp" hidden></span> Status: <b id="status">ready</b> &nbsp;·&nbsp; Path: <b id="pathtxt">–</b> &nbsp;·&nbsp; Cost: <b id="cost">–</b></div>
   <div class="legend">
     <span><i style="background:var(--start)"></i>start (A)</span>
     <span><i style="background:var(--target)"></i>goal (H)</span>
-    <span><i style="background:var(--cur)"></i>just locked-in</span>
-    <span><i style="background:var(--visit)"></i>visited</span>
+    <span><i style="background:var(--start)"></i>visiting now</span>
+    <span><i style="background:var(--visit)"></i>visited ✓ (distance final)</span>
+    <span><i style="background:var(--cur)"></i>neighbour updated</span>
+    <span><i style="background:#8aa0c8"></i>neighbour checked, no change</span>
     <span><i style="background:var(--open)"></i>in the open list (A*)</span>
     <span><i style="background:var(--path)"></i>shortest path</span>
   </div>
 
   <div class="tablewrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
-  <div class="hint">Each row shows the state after picking one node. The picked cell is green; previously-visited cells are blue. Cells read <code>cost (predecessor)</code>; <code>∞</code> means unreachable so far. For A*, the heading also shows <code>h</code> (straight-line distance) for each node and an <code>f = g + h</code> column. Run both on the same graph and compare how many nodes each one locks in.</div>
+  <div class="hint">Each row is one visit. The visited node's cell is green and earlier visits are blue; cells that were updated while checking its neighbours turn amber. Cells read <code>cost (predecessor)</code>; <code>∞</code> means unreachable so far. For A*, the heading also shows <code>h</code> (straight-line distance) for each node and an <code>f = g + h</code> column. Run both on the same graph and compare how many nodes each one locks in.</div>
 </div>
 
 <script>
@@ -85,6 +103,7 @@
   cv.width=W*dpr; cv.height=H*dpr; ctx.scale(dpr,dpr);
   const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const $=id=>document.getElementById(id);
+  function say(p,m){ const el=$('phase'); el.textContent=p; el.dataset.p=p; $('explain').textContent=m; }
 
   const IDS=['A','B','C','D','E','F','G','H'];
   const COLS=4, ROWS=2;
@@ -93,6 +112,7 @@
   let gen=null, running=false, stepOnce=false, speed=2, acc=0;
   let stepNum=0, currentNode=null, distSnap={}, prevSnap={}, visited=new Set();
   let pathEdges=new Set(), pathNodes=new Set(), done=false, openSnap=new Set();
+  let check=null, curCells=null; // check = {from,to,better}
 
   // ---- random graph ----
   function randomGraph(){
@@ -139,6 +159,8 @@
   const copy=o=>{ const r={}; IDS.forEach(id=>r[id]=o[id]); return r; };
 
   // ---- algorithms ----
+  // One event per step: 'visit' locks in a node, 'check' looks at one neighbour.
+  const show=v=>v===Infinity?'∞':String(v);
   function* dijkstra(){
     const dist={}, prev={}, vis=new Set();
     IDS.forEach(id=>{dist[id]=Infinity;prev[id]=null;});
@@ -148,10 +170,19 @@
       for(const id of IDS) if(!vis.has(id) && dist[id]<bestd){bestd=dist[id]; best=id;}
       if(best===null){ yield dist['H']<Infinity ? {type:'done', path:reconstruct(prev,'H'), cost:dist['H']} : {type:'fail'}; return; }
       vis.add(best);
-      for(const e of adj[best]){ if(vis.has(e.to)) continue;
-        const nd=dist[best]+e.w;
-        if(nd<dist[e.to]){ dist[e.to]=nd; prev[e.to]=best; } }
-      yield {type:'visit', node:best, dist:copy(dist), prev:copy(prev), visited:new Set(vis), goalFinal: best==='H'};
+      yield {type:'visit', node:best, dist:copy(dist), prev:copy(prev), visited:new Set(vis), goalFinal: best==='H',
+        msg:`Visit ${best}: it has the lowest cost (${dist[best]}) of the unvisited nodes, so its shortest distance is now final.`
+          + (best==='H' ? ' That is the goal, but Dijkstra carries on until every node has its shortest distance.' : '')};
+      const nb=adj[best].filter(e=>!vis.has(e.to)).sort((x,y)=>x.to<y.to?-1:1);
+      if(!nb.length) yield {type:'note', msg:`${best} has no unvisited neighbours left to check.`};
+      for(const e of nb){
+        const old=dist[e.to], nd=dist[best]+e.w, better=nd<old;
+        if(better){ dist[e.to]=nd; prev[e.to]=best; }
+        yield {type:'check', from:best, to:e.to, better, dist:copy(dist), prev:copy(prev),
+          msg: better
+            ? `Check ${e.to}: cost via ${best} = ${dist[best]} + ${e.w} = ${nd}, which is less than ${show(old)}. Update ${e.to} to ${nd} (via ${best}).`
+            : `Check ${e.to}: cost via ${best} = ${dist[best]} + ${e.w} = ${nd}, which is not less than ${old}. ${e.to} stays at ${old}.`};
+      }
       if(vis.size===IDS.length){ yield {type:'done', path:reconstruct(prev,'H'), cost:dist['H']}; return; }
     }
   }
@@ -162,11 +193,21 @@
       let best=null, bestf=Infinity;
       for(const id of open){ const f=g[id]+heuristic(id); if(f<bestf){bestf=f; best=id;} }
       open.delete(best); closed.add(best);
-      for(const e of adj[best]){ if(closed.has(e.to)) continue;
-        const ng=g[best]+e.w;
-        if(ng<g[e.to]){ g[e.to]=ng; prev[e.to]=best; open.add(e.to); } }
-      yield {type:'visit', node:best, dist:copy(g), prev:copy(prev), visited:new Set(closed), f:bestf, open:new Set(open)};
+      yield {type:'visit', node:best, dist:copy(g), prev:copy(prev), visited:new Set(closed), f:bestf, open:new Set(open),
+        msg:`Visit ${best}: it has the lowest f in the open list (f = g + h = ${g[best]} + ${heuristic(best)} = ${bestf}).`
+          + (best==='H' ? ' That is the goal, so A* stops here.' : '')};
       if(best==='H'){ yield {type:'done', path:reconstruct(prev,'H'), cost:g['H']}; return; }
+      const nb=adj[best].filter(e=>!closed.has(e.to)).sort((x,y)=>x.to<y.to?-1:1);
+      if(!nb.length) yield {type:'note', open:new Set(open), msg:`${best} has no unvisited neighbours left to check.`};
+      for(const e of nb){
+        const old=g[e.to], ng=g[best]+e.w, better=ng<old, h=heuristic(e.to);
+        const joins=better && !open.has(e.to);
+        if(better){ g[e.to]=ng; prev[e.to]=best; open.add(e.to); }
+        yield {type:'check', from:best, to:e.to, better, dist:copy(g), prev:copy(prev), open:new Set(open),
+          msg: better
+            ? `Check ${e.to}: g via ${best} = ${g[best]} + ${e.w} = ${ng}, less than ${show(old)}. Update ${e.to}: g = ${ng}, f = ${ng} + ${h} = ${ng+h}.${joins?' It joins the open list.':''}`
+            : `Check ${e.to}: g via ${best} = ${g[best]} + ${e.w} = ${ng}, not less than ${old}. ${e.to} stays at ${old}.`};
+      }
     }
     yield {type:'fail'};
   }
@@ -178,7 +219,7 @@
 
   // ---- table ----
   function buildHeader(){
-    let html='<th>Step</th><th>Lock-in</th>';
+    let html='<th>Visit</th><th>Node</th>';
     if(algo==='astar') html+='<th>f = g + h</th>';
     IDS.forEach(id=>{
       const hh = algo==='astar' ? '<br><span style="color:#7d93bd;font-size:10px">h='+heuristic(id)+'</span>' : '';
@@ -197,7 +238,7 @@
     tr.innerHTML=html; $('tbody').appendChild(tr);
   }
   function addRow(e){
-    const tr=document.createElement('tr');
+    const tr=document.createElement('tr'); curCells={};
     let html='<td>'+stepNum+'</td><td><b style="color:'+css('--cur')+'">'+e.node+'</b></td>';
     if(algo==='astar') html+='<td>'+(e.f===Infinity?'∞':e.f)+'</td>';
     IDS.forEach(id=>{
@@ -206,15 +247,17 @@
       let cls='';
       if(id===e.node) cls='locked';
       else if(e.visited.has(id)) cls='visited';
-      html+='<td class="'+cls+'">'+d+(p?' ('+p+')':'')+'</td>';
+      html+='<td class="'+cls+'" data-id="'+id+'">'+d+(p?' ('+p+')':'')+'</td>';
     });
     tr.innerHTML=html; $('tbody').appendChild(tr);
+    tr.querySelectorAll('td[data-id]').forEach(td=>curCells[td.dataset.id]=td);
     const w=$('tbody').parentElement.parentElement; w.scrollTop=w.scrollHeight;
   }
 
   function resetRun(){
     gen=null; running=false; stepOnce=false; acc=0;
     stepNum=0; currentNode=null; visited=new Set(); pathEdges=new Set(); pathNodes=new Set(); done=false; openSnap=new Set(['A']);
+    check=null; curCells=null; say('READY','Press Step to visit the first node, then check its neighbours one at a time.');
     distSnap={}; prevSnap={};
     IDS.forEach(id=>{ distSnap[id]=Infinity; prevSnap[id]=null; });
     distSnap['A']=0;
@@ -230,14 +273,26 @@
     const r=gen.next();
     if(r.done){ done=true; return false; }
     const e=r.value;
+    if(curCells) Object.values(curCells).forEach(td=>td.classList.remove('checking'));
+    if(e.msg) say(e.type==='visit'?'VISIT':e.type==='check'?(e.better?'UPDATE':'CHECK'):'CHECK', e.msg);
     if(e.type==='visit'){
-      stepNum++; currentNode=e.node; distSnap=e.dist; prevSnap=e.prev; visited=e.visited; openSnap=e.open||new Set();
+      stepNum++; currentNode=e.node; distSnap=e.dist; prevSnap=e.prev; visited=e.visited; openSnap=e.open||new Set(); check=null;
       $('stp').textContent=stepNum; $('locked').textContent=visited.size; addRow(e);
       if(e.goalFinal) $('status').textContent='H locked in at cost '+e.dist['H']+'; Dijkstra carries on until every node is locked in';
+    } else if(e.type==='check'){
+      check={from:e.from, to:e.to, better:e.better}; distSnap=e.dist; prevSnap=e.prev; if(e.open) openSnap=e.open;
+      const td=curCells && curCells[e.to];
+      if(td){
+        td.classList.add('checking');
+        if(e.better){ td.textContent=e.dist[e.to]+' ('+e.prev[e.to]+')'; td.classList.add('updated'); }
+      }
+    } else if(e.type==='note'){
+      check=null; if(e.open) openSnap=e.open;
     } else if(e.type==='done'){
       pathNodes=new Set(e.path); pathEdges=new Set();
       for(let i=0;i<e.path.length-1;i++) pathEdges.add(edgeKey(e.path[i], e.path[i+1]));
-      done=true; running=false; openSnap=new Set();
+      done=true; running=false; openSnap=new Set(); check=null;
+      say('DONE', (algo==='astar'?'A* reached the goal. ':'Every node now has its shortest distance from A. ')+'Shortest path to H: '+e.path.join(' → ')+', cost '+e.cost+'.');
       $('status').textContent = algo==='astar' ? 'goal reached: A* stops here' : 'all nodes locked in'; $('pathtxt').textContent=e.path.join(' → ');
       $('cost').textContent=e.cost; $('play').textContent='▶ Run';
     } else if(e.type==='fail'){
@@ -257,16 +312,17 @@
     edges.forEach(e=>{
       const a=nodes[e.u], b=nodes[e.v];
       const onPath=pathEdges.has(edgeKey(e.u,e.v));
-      ctx.strokeStyle = onPath? css('--path'): 'rgba(90,110,150,.55)';
-      ctx.lineWidth = onPath? 4.5: 1.6;
+      const checking=check && edgeKey(check.from,check.to)===edgeKey(e.u,e.v);
+      ctx.strokeStyle = onPath? css('--path'): checking ? (check.better?css('--cur'):'#8aa0c8') : 'rgba(90,110,150,.55)';
+      ctx.lineWidth = onPath? 4.5: checking ? 4 : 1.6;
       ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
       const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
       ctx.font='bold 12px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
       const t=String(e.w), tw=ctx.measureText(t).width+10;
       ctx.fillStyle='rgba(4,6,14,.92)';
-      ctx.strokeStyle = onPath? css('--path'):'#33415f'; ctx.lineWidth=1.2;
+      ctx.strokeStyle = onPath? css('--path'): checking ? (check.better?css('--cur'):'#8aa0c8') : '#33415f'; ctx.lineWidth=1.2;
       rrect(mx-tw/2, my-9, tw, 18, 5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = onPath? css('--path'):'#cfe6ff'; ctx.fillText(t, mx, my+1);
+      ctx.fillStyle = onPath? css('--path'): checking&&check.better ? css('--cur') : '#cfe6ff'; ctx.fillText(t, mx, my+1);
     });
     IDS.forEach(id=>{
       const n=nodes[id], r=22;
@@ -274,15 +330,28 @@
       if(openSnap.has(id) && !visited.has(id)){ stroke=css('--open'); txt='#bff8ff'; }
       if(visited.has(id)){ fill='rgba(47,109,240,.32)'; stroke=css('--visit'); txt='#bff8ff'; }
       if(pathNodes.has(id)){ fill='rgba(255,226,77,.25)'; stroke=css('--path'); txt='#ffe24d'; }
-      if(id===currentNode){ stroke=css('--cur'); }
+      if(id===currentNode && !done){ stroke=css('--start'); fill='rgba(25,255,155,.22)'; txt='#bfffe0'; }
+      const checked = check && check.to===id;
+      if(checked){ stroke = check.better ? css('--cur') : '#8aa0c8'; }
       if(id==='A' && !pathNodes.has(id)) stroke=css('--start');
-      if(id==='H' && !pathNodes.has(id) && id!==currentNode) stroke=css('--target');
+      if(id==='H' && !pathNodes.has(id) && id!==currentNode && !checked) stroke=css('--target');
       ctx.save();
-      if(id===currentNode || pathNodes.has(id)){ ctx.shadowBlur=18; ctx.shadowColor=stroke; }
+      if(id===currentNode || pathNodes.has(id) || checked){ ctx.shadowBlur=18; ctx.shadowColor=stroke; }
+      if(checked) ctx.setLineDash([6,4]);
       ctx.fillStyle=fill; ctx.strokeStyle=stroke; ctx.lineWidth=2.6;
       ctx.beginPath(); ctx.arc(n.x,n.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
       ctx.fillStyle=txt; ctx.font='bold 18px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(id, n.x, n.y);
+      if(visited.has(id)){
+        ctx.save(); ctx.fillStyle=css('--visit'); ctx.beginPath(); ctx.arc(n.x+r*0.8, n.y-r*0.8, 8, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle='#fff'; ctx.font='bold 11px monospace'; ctx.fillText('✓', n.x+r*0.8, n.y-r*0.8+1); ctx.restore();
+      }
+      if(checked){
+        ctx.save(); ctx.font='bold 11px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillStyle = check.better ? css('--cur') : '#8aa0c8';
+        ctx.fillText(check.better ? 'updated → '+distSnap[id] : 'no change', n.x+r+8, n.y);
+        ctx.restore();
+      }
       ctx.font='10px monospace'; ctx.textBaseline='alphabetic';
       if(algo==='astar'){
         ctx.fillStyle='#b07cff'; ctx.fillText('h='+heuristic(id), n.x, n.y+r+12);
