@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sorting Visualiser — Bubble · Insertion · Selection · Merge · Quick</title>
+<title>Sorting Visualiser — Bubble · Insertion · Merge · Quick</title>
 <style>
   :root{ --bg:#05060c; --panel:#0c1020; --edge:#1d2540; --txt:#cfe6ff;
     --bar:#2f6df0; --cmp:#ffb02e; --swap:#ff5d8f; --sorted:#19ff9b; --pivot:#b07cff; }
@@ -20,6 +20,16 @@
   .stage{border:1px solid var(--edge);border-radius:12px;overflow:hidden;background:#04050a;
     box-shadow:0 0 40px rgba(47,109,240,.08)}
   canvas{display:block;width:100%;height:auto}
+  canvas.ask{cursor:pointer}
+  .narrate{display:flex;gap:12px;align-items:flex-start;margin-top:12px;padding:10px 12px;
+    background:var(--panel);border:1px solid var(--edge);border-radius:10px;min-height:46px}
+  .phase{flex:none;font-size:11px;font-weight:700;letter-spacing:.08em;padding:4px 8px;border-radius:6px;
+    border:1px solid var(--edge);color:#8aa0c8;min-width:92px;text-align:center}
+  .phase[data-p="COMPARE"]{color:var(--cmp);border-color:var(--cmp)}
+  .phase[data-p="SHIFT"],.phase[data-p="SWAP"],.phase[data-p="MERGE"]{color:var(--swap);border-color:var(--swap)}
+  .phase[data-p="KEY"],.phase[data-p="PIVOT"],.phase[data-p="CHOOSE PIVOT"]{color:var(--pivot);border-color:var(--pivot)}
+  .phase[data-p="INSERT"],.phase[data-p="SPLIT"],.phase[data-p="DIVIDE"],.phase[data-p="DONE"]{color:var(--sorted);border-color:var(--sorted)}
+  #explain{font-size:13px;line-height:1.5;color:#dbe8ff}
   .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
   button,select{font:inherit;color:var(--txt);background:var(--panel);
     border:1px solid var(--edge);border-radius:8px;padding:8px 12px;cursor:pointer}
@@ -30,26 +40,57 @@
   .stats b{color:#fff}
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:#8aa0c8}
   .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  .runs{margin-top:18px;font-size:12px;color:#8aa0c8}
+  .runs table{border-collapse:collapse;width:100%;margin-top:6px}
+  .runs th,.runs td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--edge)}
+  .runs th{color:#5f7099;font-weight:600}
+  .runs td b{color:#fff}
+  .runs-wrap{overflow-x:auto}
+  [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <div class="wrap">
   <a class="back" href="index.html">← all animations</a>
   <h1>SORTING VISUALISER</h1>
-  <p class="sub">Watch comparison-based sorting algorithms rearrange an array. Yellow = comparing, pink = swapping, green = in final place.</p>
+  <p class="sub">Watch comparison-based sorting algorithms rearrange an array, one step at a time.</p>
 
   <div class="stage"><canvas id="cv"></canvas></div>
 
+  <div class="narrate" aria-live="polite">
+    <span class="phase" id="phase">READY</span>
+    <span id="explain">Choose an algorithm, then press Play or Step.</span>
+  </div>
+
   <div class="controls">
-    <select id="algo">
+    <select id="algo" aria-label="Algorithm">
       <option value="bubble">Bubble sort</option>
       <option value="insertion">Insertion sort</option>
       <option value="quick">Quick sort</option>
       <option value="merge">Merge sort</option>
     </select>
+    <label id="pivotWrap" hidden>Pivot
+      <select id="pivot">
+        <option value="last">Last item</option>
+        <option value="first">First item</option>
+        <option value="middle">Middle item</option>
+        <option value="random">Random item</option>
+        <option value="median3">Median of three</option>
+        <option value="choose">I'll choose (click)</option>
+      </select>
+    </label>
     <button id="play">▶ Play</button>
     <button id="step">⏭ Step</button>
+    <button id="replay">↺ Replay same array</button>
     <button id="shuffle">🔀 New array</button>
+    <label>Start order
+      <select id="order">
+        <option value="random">Random</option>
+        <option value="nearly">Nearly sorted</option>
+        <option value="sorted">Already sorted</option>
+        <option value="reversed">Reversed</option>
+      </select>
+    </label>
     <label>Size <input id="size" type="range" min="6" max="24" step="1" value="12" /></label>
     <label>Speed <input id="speed" type="range" min="1" max="40" step="1" value="6" /></label>
   </div>
@@ -57,170 +98,453 @@
   <div class="stats">
     <span>Comparisons: <b id="cmp">0</b></span>
     <span>Swaps / writes: <b id="swp">0</b></span>
+    <span id="depthWrap" hidden>Tree levels: <b id="depth">0</b></span>
     <span>Status: <b id="status">ready</b></span>
   </div>
 
   <div class="legend">
     <span><i style="background:var(--bar)"></i>unsorted</span>
     <span><i style="background:var(--cmp)"></i>comparing</span>
-    <span><i style="background:var(--swap)"></i>swap / write</span>
+    <span><i style="background:var(--swap)"></i>swap / shift / write</span>
     <span><i style="background:var(--pivot)"></i>pivot / key</span>
     <span><i style="background:var(--sorted)"></i>sorted</span>
   </div>
+
+  <div class="runs" id="runsBox" hidden>
+    Finished runs (use <b>Replay same array</b> to try another pivot on the same numbers):
+    <div class="runs-wrap"><table>
+      <thead><tr><th>Algorithm</th><th>Pivot</th><th>Start order</th><th>Size</th><th>Comparisons</th><th>Swaps / writes</th><th>Tree levels</th></tr></thead>
+      <tbody id="runs"></tbody>
+    </table></div>
+  </div>
+
   <p style="color:#5f7099;font-size:12px;margin-top:14px;line-height:1.6">
-    Numbers are randomised each time you click <b>New array</b> (or change the size). The same algorithm runs every comparison and swap step-by-step — try <b>Step</b> for one operation at a time.
+    <b>Insertion sort</b> lifts each key out, shifts bigger items right and drops it into the gap; green shows the part that is sorted so far.
+    <b>Quick sort</b> draws a tree: each range splits into values less than the pivot, the pivot itself, and values greater than or equal to it.
+    A bad pivot (try <i>First item</i> on an already sorted array) makes a tall, thin tree and many more comparisons.
+    <b>Merge sort</b> first divides the list down to single items, then merges pairs back together in order.
   </p>
 </div>
 
 <script>
 (function(){
   "use strict";
-  const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
-  const W=1000,H=220;
+  const $=id=>document.getElementById(id);
+  const cv=$('cv'), ctx=cv.getContext('2d');
+  const W=1000;
+  let H=220;
   const dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));
-  cv.width=W*dpr; cv.height=H*dpr; ctx.scale(dpr,dpr);
   const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function sizeCanvas(h){
+    if(h===H && cv.width) return;
+    H=h; cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  sizeCanvas(220);
 
-  let arr=[], n=12, gen=null, running=false, stepOnce=false;
-  let cmpHi=[], swpHi=[], pivotHi=-1, sorted=new Set();
+  let original=[], arr=[], n=12, gen=null, running=false, stepOnce=false, finished=false;
   let cmpCount=0, swpCount=0, speed=6, acc=0;
+  let view, tree, ask=null, chosen=null;
 
+  const algoName={bubble:'Bubble sort',insertion:'Insertion sort',quick:'Quick sort',merge:'Merge sort'};
+  const algo=()=>$('algo').value;
+  const isTree=()=>algo()==='quick'||algo()==='merge';
+
+  function freshView(){
+    return {cmp:[], swp:[], pivot:-1, range:null, ins:null, prefix:0, sorted:new Set()};
+  }
+
+  // ---- arrays ----
   function newArray(){
-    arr=[]; for(let i=0;i<n;i++) arr.push(1+Math.floor(Math.random()*99));
-    resetRun();
+    const order=$('order').value;
+    const a=[]; for(let i=0;i<n;i++) a.push(1+Math.floor(Math.random()*99));
+    if(order!=='random') a.sort((x,y)=>x-y);
+    if(order==='reversed') a.reverse();
+    if(order==='nearly'){
+      for(let k=0;k<Math.max(1,Math.round(n/6));k++){
+        const i=Math.floor(Math.random()*(n-1)); const t=a[i]; a[i]=a[i+1]; a[i+1]=t;
+      }
+    }
+    original=a; resetRun();
   }
   function resetRun(){
-    gen=null; running=false; stepOnce=false;
-    cmpHi=[]; swpHi=[]; pivotHi=-1; sorted=new Set();
+    arr=original.slice();
+    gen=null; running=false; stepOnce=false; finished=false; ask=null; chosen=null;
+    view=freshView(); tree={nodes:[], edges:[], rows:0, split:-1};
     cmpCount=0; swpCount=0; acc=0;
-    document.getElementById('play').textContent='▶ Play';
-    document.getElementById('status').textContent='ready';
+    $('play').textContent='▶ Play';
+    $('status').textContent='ready';
+    $('pivotWrap').hidden = algo()!=='quick';
+    $('depthWrap').hidden = !isTree();
+    if(algo()==='merge'){ const D=Math.ceil(Math.log2(n)); tree.rows=2*D+1; tree.split=D; }
+    if(algo()==='quick') tree.rows=1;
+    say('READY', intro());
+    cv.classList.remove('ask');
     updateStats();
   }
+  function intro(){
+    return {
+      bubble:'Bubble sort compares neighbours and swaps them if they are in the wrong order. After each pass the largest remaining value is in its final place.',
+      insertion:'Insertion sort builds a sorted list on the left. Each pass lifts the next item (the key) out, shifts bigger items one place right, and inserts the key into the gap.',
+      quick:'Quick sort picks a pivot, moves smaller values to its left and the rest to its right, then does the same to each side. The tree below shows every split.',
+      merge:'Merge sort divides the list in half again and again until every item is on its own, then merges the pieces back together in order.'
+    }[algo()];
+  }
+  function say(phase,msg){
+    $('phase').textContent=phase; $('phase').dataset.p=phase;
+    if(msg!=null) $('explain').textContent=msg;
+  }
   function updateStats(){
-    document.getElementById('cmp').textContent=cmpCount;
-    document.getElementById('swp').textContent=swpCount;
+    $('cmp').textContent=cmpCount;
+    $('swp').textContent=swpCount;
+    $('depth').textContent=algo()==='merge' ? Math.ceil(Math.log2(n))+1 : tree.rows;
   }
 
   const swap=(a,i,j)=>{ const t=a[i]; a[i]=a[j]; a[j]=t; };
+  const list=v=>'['+v.join(', ')+']';
 
-  // ---- algorithms as event generators (mutate arr in place) ----
+  // ---- tree helpers ----
+  function addNode(row,lo,hi,vals,kind,state){
+    const node={row,lo,hi,vals,kind,state,hl:{cmp:[],write:[],taken:new Set()}};
+    tree.nodes.push(node); if(row+1>tree.rows) tree.rows=row+1;
+    return node;
+  }
+  function addEdge(a,b,label){ tree.edges.push({a,b,label}); }
+
+  // ---- algorithms as step generators ----
+  // They mutate `arr`, `view` and `tree`, and yield {phase, msg, c (comparisons), w (writes), ask}.
   function* bubble(a){
     const m=a.length;
     for(let i=0;i<m-1;i++){
       for(let j=0;j<m-1-i;j++){
-        yield {compare:[j,j+1]};
-        if(a[j]>a[j+1]){ swap(a,j,j+1); yield {swap:[j,j+1]}; }
+        view.cmp=[j,j+1];
+        const big=a[j]>a[j+1];
+        yield {phase:'COMPARE', c:1, msg:`Compare ${a[j]} and ${a[j+1]}: ${big?'they are in the wrong order.':'already in order, no swap.'}`};
+        if(big){ swap(a,j,j+1); view.swp=[j,j+1]; yield {phase:'SWAP', w:1, msg:`Swap them, so ${a[j+1]} moves right.`}; }
       }
-      yield {sorted:m-1-i};
+      view.sorted.add(m-1-i);
+      yield {phase:'DONE', msg:`End of pass ${i+1}: ${a[m-1-i]} is in its final place.`};
     }
-    yield {sorted:0};
+    view.sorted.add(0);
   }
+
   function* insertion(a){
     const m=a.length;
-    yield {sorted:0};
+    view.prefix=1;
+    yield {phase:'INSERT', msg:'A list of one item is already sorted, so position 0 starts green.'};
     for(let i=1;i<m;i++){
-      let key=a[i], j=i-1;
-      yield {pivot:i};
+      const key=a[i]; let j=i-1;
+      view.ins={key, hole:i, pass:i};
+      yield {phase:'KEY', msg:`Pass ${i}: lift the key ${key} out of position ${i}. Positions 0–${i-1} are sorted.`};
       while(j>=0){
-        yield {compare:[j,i]};
-        if(a[j]>key){ a[j+1]=a[j]; yield {set:[j+1,a[j+1]]}; j--; }
-        else break;
+        view.cmp=[j]; view.ins.cmp=true;
+        const bigger=a[j]>key;
+        yield {phase:'COMPARE', c:1, msg:`Is ${a[j]} bigger than the key ${key}? ${bigger?'Yes, so it must move right.':'No, so the key belongs straight after it.'}`};
+        view.ins.cmp=false;
+        if(!bigger) break;
+        a[j+1]=a[j]; view.ins.hole=j; view.swp=[j+1];
+        yield {phase:'SHIFT', w:1, msg:`Shift ${a[j+1]} one place right, into position ${j+1}. The gap moves to position ${j}.`};
+        j--;
       }
-      a[j+1]=key; yield {set:[j+1,key]};
+      a[j+1]=key; view.ins=null; view.swp=[j+1]; view.prefix=i+1;
+      yield {phase:'INSERT', w:1, msg:`${j<0?'Reached the start of the list. ':''}Insert ${key} into the gap at position ${j+1}. Positions 0–${i} are now sorted: ${list(a.slice(0,i+1))}.`};
     }
-    for(let k=0;k<m;k++) yield {sorted:k};
   }
-  function* merge(a){
-    const m=a.length;
-    function* ms(lo,hi){
-      if(hi-lo<=1) return;
-      const mid=(lo+hi)>>1;
-      yield* ms(lo,mid); yield* ms(mid,hi);
-      const buf=[]; let i=lo,j=mid;
-      while(i<mid&&j<hi){
-        yield {compare:[i,j]};
-        if(a[i]<=a[j]) buf.push(a[i++]); else buf.push(a[j++]);
-      }
-      while(i<mid) buf.push(a[i++]);
-      while(j<hi) buf.push(a[j++]);
-      for(let k=0;k<buf.length;k++){ a[lo+k]=buf[k]; yield {set:[lo+k,buf[k]]}; }
+
+  function choosePivot(a,lo,hi){
+    const s=$('pivot').value, mid=(lo+hi)>>1;
+    if(s==='first') return {p:lo, why:'the first item'};
+    if(s==='middle') return {p:mid, why:'the middle item'};
+    if(s==='random') return {p:lo+Math.floor(Math.random()*(hi-lo+1)), why:'a random item'};
+    if(s==='median3'){
+      const c=[lo,mid,hi].sort((x,y)=>a[x]-a[y]);
+      return {p:c[1], why:`the median of ${a[lo]}, ${a[mid]} and ${a[hi]}`, cost:3, look:[lo,mid,hi]};
     }
-    yield* ms(0,m);
-    for(let k=0;k<m;k++) yield {sorted:k};
+    return {p:hi, why:'the last item'};
   }
+
   function* quick(a){
     const m=a.length;
-    function* qs(lo,hi){
-      if(lo>=hi){ if(lo===hi) yield {sorted:lo}; return; }
-      const pivot=a[hi]; yield {pivot:hi};
-      let i=lo;
-      for(let j=lo;j<hi;j++){
-        yield {compare:[j,hi]};
-        if(a[j]<pivot){ if(i!==j){ swap(a,i,j); yield {swap:[i,j]}; } i++; }
+    function* qs(node){
+      const lo=node.lo, hi=node.hi;
+      if(lo===hi){
+        view.sorted.add(lo); node.state='final';
+        yield {phase:'DONE', msg:`[${a[lo]}] is a single item, so it is already in its final place.`};
+        return;
       }
-      swap(a,i,hi); yield {swap:[i,hi]};
-      yield {sorted:i};
-      yield* qs(lo,i-1); yield* qs(i+1,hi);
+      node.state='active'; view.range=[lo,hi]; view.pivot=-1;
+      let p, why;
+      if($('pivot').value==='choose'){
+        ask=[lo,hi]; chosen=null;
+        yield {phase:'CHOOSE PIVOT', ask:true, msg:`Click a value in the highlighted range ${list(a.slice(lo,hi+1))} to use as the pivot.`};
+        p=chosen; why='your choice'; ask=null;
+      } else {
+        const r=choosePivot(a,lo,hi); p=r.p; why=r.why;
+        if(r.look){ view.cmp=r.look; yield {phase:'COMPARE', c:r.cost, msg:`Median of three: look at ${a[r.look[0]]}, ${a[r.look[1]]} and ${a[r.look[2]]}, and take the middle value.`}; }
+      }
+      view.pivot=p; node.hl.pivot=p;
+      yield {phase:'PIVOT', msg:`Pivot = ${a[p]} (${why}). Values less than ${a[p]} will go to its left, the rest to its right.`};
+      if(p!==hi){
+        swap(a,p,hi); view.swp=[p,hi]; view.pivot=hi;
+        yield {phase:'SWAP', w:1, msg:`Move the pivot ${a[hi]} to the end of the range so it is out of the way while we partition.`};
+      }
+      const pivot=a[hi]; let i=lo;
+      for(let j=lo;j<hi;j++){
+        view.cmp=[j];
+        const less=a[j]<pivot;
+        yield {phase:'COMPARE', c:1, msg:`Is ${a[j]} less than the pivot ${pivot}? ${less?'Yes: it belongs in the left part.':'No: it stays in the right part.'}`};
+        if(less){
+          if(i!==j){ swap(a,i,j); view.swp=[i,j]; yield {phase:'SWAP', w:1, msg:`Swap ${a[i]} into the left part (position ${i}).`}; }
+          i++;
+        }
+      }
+      if(i!==hi){ swap(a,i,hi); view.swp=[i,hi]; swpCount++; }
+      view.pivot=-1; view.sorted.add(i);
+      const L=a.slice(lo,i), R=a.slice(i+1,hi+1);
+      node.state='done'; node.hl.pivot=undefined;
+      const row=node.row+1;
+      const left = L.length ? addNode(row,lo,i-1,L.slice(),'range','pending') : null;
+      const piv = addNode(row,i,i,[pivot],'pivot','final');
+      const right = R.length ? addNode(row,i+1,hi,R.slice(),'range','pending') : null;
+      if(left) addEdge(node,left,'< '+pivot);
+      addEdge(node,piv,'');
+      if(right) addEdge(node,right,'≥ '+pivot);
+      view.range=null;
+      yield {phase:'SPLIT', msg:`Put the pivot ${pivot} between the two parts: it is now in its final place (position ${i}). Less than ${pivot}: ${L.length?list(L):'nothing'}. Greater or equal: ${R.length?list(R):'nothing'}.`};
+      if(left) yield* qs(left);
+      if(right) yield* qs(right);
     }
-    yield* qs(0,m-1);
+    const root=addNode(0,0,m-1,a.slice(),'range','pending');
+    yield* qs(root);
   }
+
+  function* merge(a){
+    const m=a.length, D=Math.ceil(Math.log2(m));
+    // Stage 1: divide, level by level.
+    const root=addNode(0,0,m-1,a.slice(),'range','pending');
+    root.depth=0;
+    let level=[root];
+    for(let d=0; level.length; d++){
+      const next=[];
+      for(const node of level){
+        node.state='active'; view.range=[node.lo,node.hi];
+        const mid=(node.lo+node.hi)>>1;
+        const mk=(lo,hi)=>{
+          const vals=a.slice(lo,hi+1), leaf=lo===hi;
+          const c=addNode(leaf?D:d+1, lo, hi, vals, leaf?'leaf':'range', leaf?'sorted':'pending');
+          c.depth=d+1; addEdge(node,c,''); if(!leaf) next.push(c); else c.result=c;
+          return c;
+        };
+        const L=mk(node.lo,mid), R=mk(mid+1,node.hi);
+        node.kids=[L,R]; node.state='done';
+        yield {phase:'DIVIDE', msg:`Divide ${list(node.vals)} into ${list(L.vals)} and ${list(R.vals)}.`};
+      }
+      level=next;
+    }
+    view.range=null;
+    yield {phase:'DIVIDE', msg:'Every item is now on its own. A single item is already sorted, so now the conquer stage merges pairs back together.'};
+    // Stage 2: merge, deepest level first.
+    const internal=tree.nodes.filter(nd=>nd.kids).sort((x,y)=>y.depth-x.depth||x.lo-y.lo);
+    for(const node of internal){
+      const [Lk,Rk]=node.kids, L=Lk.result, R=Rk.result;
+      const M=addNode(2*D-node.depth, node.lo, node.hi, new Array(node.hi-node.lo+1).fill(null), 'range', 'active');
+      addEdge(L,M,''); addEdge(R,M,'');
+      view.range=[node.lo,node.hi];
+      let i=0,j=0,k=0;
+      const put=(v,from,col)=>{ M.vals[k]=v; a[node.lo+k]=v; from.hl.taken.add(col); M.hl.write=[node.lo+k]; view.swp=[node.lo+k]; k++; };
+      while(i<L.vals.length && j<R.vals.length){
+        const x=L.vals[i], y=R.vals[j];
+        L.hl.cmp=[L.lo+i]; R.hl.cmp=[R.lo+j];
+        yield {phase:'COMPARE', c:1, msg:`Compare the front of each list: ${x} and ${y}. ${x<=y?x:y} is smaller, so it goes next.`};
+        if(x<=y){ put(x,L,L.lo+i); i++; } else { put(y,R,R.lo+j); j++; }
+        yield {phase:'MERGE', w:1, msg:`Write ${M.vals[k-1]} into the merged list: ${list(M.vals.filter(v=>v!==null))}.`};
+      }
+      while(i<L.vals.length){ put(L.vals[i],L,L.lo+i); i++; yield {phase:'MERGE', w:1, msg:`The right list is used up, so copy ${M.vals[k-1]} across.`}; }
+      while(j<R.vals.length){ put(R.vals[j],R,R.lo+j); j++; yield {phase:'MERGE', w:1, msg:`The left list is used up, so copy ${M.vals[k-1]} across.`}; }
+      M.state='sorted'; node.result=M;
+      yield {phase:'INSERT', msg:`Merged ${list(L.vals)} and ${list(R.vals)} into ${list(M.vals)}.`};
+    }
+    view.range=null;
+  }
+
   const ALGOS={bubble,insertion,quick,merge};
 
-  function start(){
-    if(!gen){ gen=ALGOS[document.getElementById('algo').value](arr); }
+  function start(){ if(!gen) gen=ALGOS[algo()](arr); }
+  function clearHighlights(){
+    view.cmp=[]; view.swp=[];
+    for(const nd of tree.nodes){ nd.hl.cmp=[]; nd.hl.write=[]; }
   }
-  function applyEvent(ev){
-    cmpHi=[]; swpHi=[]; pivotHi=-1;
-    if(ev.compare){ cmpHi=ev.compare; cmpCount++; }
-    else if(ev.swap){ swpHi=ev.swap; swpCount++; }
-    else if(ev.set){ swpHi=[ev.set[0]]; swpCount++; }
-    else if(ev.pivot!=null){ pivotHi=ev.pivot; }
-    else if(ev.sorted!=null){ sorted.add(ev.sorted); }
-    updateStats();
+  function finish(){
+    running=false; finished=true; ask=null; cv.classList.remove('ask');
+    view.cmp=[]; view.swp=[]; view.pivot=-1; view.range=null; view.ins=null; view.prefix=n;
+    for(let i=0;i<n;i++) view.sorted.add(i);
+    for(const nd of tree.nodes){ nd.hl.cmp=[]; nd.hl.write=[]; nd.hl.taken.clear(); if(nd.state!=='final') nd.state= nd.kind==='pivot'?'final':(nd.state==='done'?'done':'sorted'); }
+    $('status').textContent='done';
+    $('play').textContent='▶ Play';
+    say('DONE', `Sorted: ${list(arr)}. ${cmpCount} comparisons and ${swpCount} swaps/writes.`);
+    updateStats(); logRun();
   }
   function tickStep(){
-    start();
+    if(finished) return false;
+    if(ask && chosen===null) return false;
+    start(); clearHighlights();
     const r=gen.next();
-    if(r.done){
-      running=false; cmpHi=[]; swpHi=[]; pivotHi=-1;
-      for(let i=0;i<n;i++) sorted.add(i);
-      document.getElementById('status').textContent='done';
-      document.getElementById('play').textContent='▶ Play';
-      return false;
-    }
-    applyEvent(r.value);
+    if(r.done){ finish(); return false; }
+    const ev=r.value;
+    if(ev.c) cmpCount+=ev.c;
+    if(ev.w) swpCount+=ev.w;
+    say(ev.phase, ev.msg);
+    if(ev.ask){ cv.classList.add('ask'); $('status').textContent='waiting for your pivot'; }
+    else cv.classList.remove('ask');
+    updateStats();
     return true;
   }
 
+  function logRun(){
+    const tr=document.createElement('tr');
+    const piv = algo()==='quick' ? $('pivot').selectedOptions[0].textContent : '—';
+    const lv = isTree() ? (algo()==='merge' ? Math.ceil(Math.log2(n))+1 : tree.rows) : '—';
+    [algoName[algo()], piv, $('order').selectedOptions[0].textContent, n, cmpCount, swpCount, lv]
+      .forEach((v,i)=>{ const td=document.createElement('td'); if(i===4){ const b=document.createElement('b'); b.textContent=v; td.appendChild(b);} else td.textContent=v; tr.appendChild(td); });
+    const body=$('runs'); body.insertBefore(tr, body.firstChild);
+    while(body.children.length>10) body.removeChild(body.lastChild);
+    $('runsBox').hidden=false;
+  }
+
+  // ---- drawing ----
   function rrect(x,y,w,h,r){ ctx.beginPath();
     ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
     ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  const STYLE={
+    base:{fill:'#0b1426', stroke:'--bar', txt:'#cfe6ff'},
+    sorted:{fill:'rgba(25,255,155,.16)', stroke:'--sorted', txt:'#bfffe0'},
+    pivot:{fill:'rgba(176,124,255,.22)', stroke:'--pivot', txt:'#e6d6ff'},
+    cmp:{fill:'rgba(255,176,46,.22)', stroke:'--cmp', txt:'#ffe6b0'},
+    swp:{fill:'rgba(255,93,143,.22)', stroke:'--swap', txt:'#ffc2d5'}
+  };
+  function cell(x,y,w,h,val,st,opts){
+    opts=opts||{};
+    const stroke=css(st.stroke);
+    ctx.save();
+    ctx.globalAlpha=opts.alpha==null?1:opts.alpha;
+    if(opts.hot){ ctx.shadowBlur=14; ctx.shadowColor=stroke; }
+    ctx.fillStyle=opts.empty?'transparent':st.fill; ctx.strokeStyle=stroke; ctx.lineWidth=opts.hot?2.2:1.5;
+    if(opts.empty) ctx.setLineDash([5,4]);
+    rrect(x,y,w,h,Math.min(9,h/4)); if(!opts.empty) ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]); ctx.shadowBlur=0;
+    if(val!=null && !opts.empty){
+      ctx.fillStyle=st.txt;
+      ctx.font='bold '+opts.font+'px monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(val), x+w/2, y+h/2+1);
+    }
+    ctx.restore();
+  }
+
+  function layout(){
+    const L={cw:W/Math.max(1,arr.length)};
+    if(algo()==='insertion'){ L.ch=62; L.keyY=14; L.arrY=14+62+22; L.H=L.arrY+62+30; }
+    else if(isTree()){
+      L.ch=54; L.arrY=14; L.treeTop=L.arrY+54+48;
+      const rows=Math.max(1,tree.rows);
+      L.rowH = rows>9 ? Math.max(42,Math.floor(540/rows)) : 58;
+      L.cellH = L.rowH-24;
+      L.H=L.treeTop+rows*L.rowH+6;
+    } else { L.ch=72; L.arrY=(220-72)/2-6; L.H=220; }
+    return L;
+  }
+
+  function drawArray(L){
+    const cw=L.cw, font=Math.min(22, Math.max(13, cw*0.38));
+    for(let i=0;i<arr.length;i++){
+      const x=i*cw+3, w=cw-6;
+      const inSorted = view.sorted.has(i) || (algo()==='insertion' && (i<view.prefix || (view.ins && i<=view.ins.pass)));
+      let st=inSorted?STYLE.sorted:STYLE.base, hot=false;
+      if(i===view.pivot){ st=STYLE.pivot; hot=true; }
+      if(view.cmp.indexOf(i)>=0){ st=STYLE.cmp; hot=true; }
+      if(view.swp.indexOf(i)>=0){ st=STYLE.swp; hot=true; }
+      const out = view.range && (i<view.range[0] || i>view.range[1]);
+      const hole = view.ins && view.ins.hole===i;
+      if(hole) cell(x,L.arrY,w,L.ch,null,STYLE.pivot,{empty:true,font});
+      else cell(x,L.arrY,w,L.ch,arr[i],st,{hot,font,alpha:out?0.3:1});
+      ctx.fillStyle='#5f7099'; ctx.font='10px monospace'; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(String(i), x+w/2, L.arrY+L.ch+5);
+    }
+    if(ask){
+      ctx.save(); ctx.strokeStyle=css('--pivot'); ctx.lineWidth=2; ctx.setLineDash([6,5]);
+      rrect(ask[0]*cw, L.arrY-6, (ask[1]-ask[0]+1)*cw, L.ch+12, 12); ctx.stroke(); ctx.restore();
+    }
+    if(view.ins){
+      const x=view.ins.hole*cw+3, w=cw-6;
+      cell(x,L.keyY,w,L.ch,view.ins.key,view.ins.cmp?STYLE.cmp:STYLE.pivot,{hot:true,font});
+      ctx.fillStyle=css('--pivot'); ctx.font='bold 11px monospace'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText('key', x+w/2, L.keyY+L.ch+17);
+    }
+    if(algo()==='insertion' && view.prefix>0 && view.prefix<arr.length){
+      const x=view.prefix*cw;
+      ctx.save(); ctx.strokeStyle=css('--sorted'); ctx.globalAlpha=.6; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(x,L.arrY-8); ctx.lineTo(x,L.arrY+L.ch+18); ctx.stroke(); ctx.restore();
+      ctx.fillStyle=css('--sorted'); ctx.font='10px monospace'; ctx.textAlign='right'; ctx.textBaseline='top';
+      ctx.fillText('sorted ◂', x-4, L.arrY+L.ch+18);
+    }
+  }
+
+  function drawTree(L){
+    const cw=L.cw, rowY=r=>L.treeTop+r*L.rowH, ch=L.cellH;
+    const font=Math.min(15, Math.max(10, Math.min(cw*0.34, ch*0.55)));
+    ctx.fillStyle='#5f7099'; ctx.font='11px monospace'; ctx.textAlign='left'; ctx.textBaseline='bottom';
+    ctx.fillText(algo()==='merge'?'DIVIDE ↓':'RECURSION TREE ↓', 4, L.treeTop-8);
+    if(algo()==='merge' && tree.split>=0){
+      const y=rowY(tree.split)+ch+4;
+      ctx.fillText('CONQUER: MERGE ↓', 4, rowY(tree.split+1)-6);
+      ctx.save(); ctx.strokeStyle='#1d2540'; ctx.setLineDash([3,5]);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); ctx.restore();
+    }
+    // edges
+    ctx.save(); ctx.lineWidth=1.3;
+    for(const e of tree.edges){
+      const ax=(e.a.lo+e.a.hi+1)/2*cw, ay=rowY(e.a.row)+ch+2;
+      const bx=(e.b.lo+e.b.hi+1)/2*cw, by=rowY(e.b.row)-2;
+      ctx.strokeStyle = e.b.kind==='pivot' ? 'rgba(176,124,255,.55)' : 'rgba(125,147,189,.45)';
+      ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+      if(e.label){
+        ctx.fillStyle='#8aa0c8'; ctx.font='bold 10px monospace'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(e.label, bx, by-1);
+      }
+    }
+    ctx.restore();
+    // nodes
+    for(const nd of tree.nodes){
+      const y=rowY(nd.row);
+      if(nd.hi>nd.lo || nd.kind==='range'){
+        ctx.save();
+        ctx.strokeStyle = nd.state==='active' ? css('--cmp') : nd.state==='sorted' ? 'rgba(25,255,155,.45)' : '#2a3760';
+        ctx.lineWidth = nd.state==='active' ? 1.8 : 1;
+        rrect(nd.lo*cw+1, y-3, (nd.hi-nd.lo+1)*cw-2, ch+6, 8); ctx.stroke(); ctx.restore();
+      }
+      for(let c=nd.lo;c<=nd.hi;c++){
+        const v=nd.vals[c-nd.lo], x=c*cw+4, w=cw-8;
+        let st=STYLE.base, hot=false, alpha=1;
+        if(nd.state==='sorted' || nd.state==='final' || nd.kind==='leaf') st=STYLE.sorted;
+        if(nd.kind==='pivot') st=STYLE.pivot;
+        if(nd.state==='done') alpha=0.45;
+        if(nd.hl.pivot===c){ st=STYLE.pivot; hot=true; alpha=1; }
+        if(nd.hl.cmp.indexOf(c)>=0){ st=STYLE.cmp; hot=true; alpha=1; }
+        if(nd.hl.write.indexOf(c)>=0){ st=STYLE.swp; hot=true; alpha=1; }
+        if(nd.hl.taken.has(c)) alpha=0.3;
+        cell(x,y,w,ch,v,st,{hot,font,alpha,empty:v===null});
+      }
+    }
+  }
+
   function draw(){
+    const L=layout();
+    sizeCanvas(L.H);
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle=css('--bg'); ctx.fillRect(0,0,W,H);
     if(!arr.length) return;
-    const cw=W/arr.length, ch=72, cy=(H-ch)/2-6;
-    for(let i=0;i<arr.length;i++){
-      const x=i*cw+3;
-      let fill='#0b1426', stroke=css('--bar'), txt='#cfe6ff';
-      if(sorted.has(i)){ fill='rgba(25,255,155,.16)'; stroke=css('--sorted'); txt='#bfffe0'; }
-      if(i===pivotHi){ fill='rgba(176,124,255,.18)'; stroke=css('--pivot'); txt='#dec5ff'; }
-      if(cmpHi.indexOf(i)>=0){ fill='rgba(255,176,46,.22)'; stroke=css('--cmp'); txt='#ffe6b0'; }
-      if(swpHi.indexOf(i)>=0){ fill='rgba(255,93,143,.22)'; stroke=css('--swap'); txt='#ffc2d5'; }
-      const hot = (cmpHi.indexOf(i)>=0 || swpHi.indexOf(i)>=0 || i===pivotHi);
-      ctx.save();
-      if(hot){ ctx.shadowBlur=14; ctx.shadowColor=stroke; }
-      ctx.fillStyle=fill; ctx.strokeStyle=stroke; ctx.lineWidth=hot?2.2:1.6;
-      rrect(x,cy,cw-6,ch,9); ctx.fill(); ctx.stroke();
-      ctx.restore();
-      ctx.fillStyle=txt;
-      ctx.font='bold '+Math.min(22, Math.max(13, cw*0.38))+'px monospace';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(String(arr[i]), x+(cw-6)/2, cy+ch/2);
-      ctx.fillStyle='#5f7099'; ctx.font='10px monospace'; ctx.textBaseline='top';
-      ctx.fillText(String(i), x+(cw-6)/2, cy+ch+5);
-    }
+    drawArray(L);
+    if(isTree()) drawTree(L);
     ctx.textBaseline='alphabetic';
   }
 
@@ -230,28 +554,49 @@
     if(running){
       acc+=dt*speed;
       let guard=0;
-      while(acc>=1 && guard<500){ acc-=1; if(!tickStep()) break; guard++; }
+      while(acc>=1 && guard<500){ acc-=1; if(!tickStep()) { acc=0; break; } guard++; }
     } else if(stepOnce){ tickStep(); stepOnce=false; }
     draw();
     requestAnimationFrame(frame);
   }
 
   // ---- controls ----
-  document.getElementById('play').addEventListener('click',e=>{
-    if(document.getElementById('status').textContent==='done') return;
+  $('play').addEventListener('click',e=>{
+    if(finished) return;
     running=!running; e.target.textContent=running?'⏸ Pause':'▶ Play';
-    document.getElementById('status').textContent=running?'sorting…':'paused';
+    $('status').textContent= ask ? 'waiting for your pivot' : running?'sorting…':'paused';
   });
-  document.getElementById('step').addEventListener('click',()=>{
-    if(document.getElementById('status').textContent==='done') return;
-    running=false; document.getElementById('play').textContent='▶ Play';
-    document.getElementById('status').textContent='stepping';
+  $('step').addEventListener('click',()=>{
+    if(finished) return;
+    running=false; $('play').textContent='▶ Play';
+    if(!ask) $('status').textContent='stepping';
     stepOnce=true;
   });
-  document.getElementById('shuffle').addEventListener('click',newArray);
-  document.getElementById('algo').addEventListener('change',resetRun);
-  document.getElementById('size').addEventListener('input',e=>{ n=parseInt(e.target.value,10); newArray(); });
-  document.getElementById('speed').addEventListener('input',e=>{ speed=parseInt(e.target.value,10); });
+  cv.addEventListener('click',e=>{
+    if(!ask) return;
+    const r=cv.getBoundingClientRect();
+    const x=(e.clientX-r.left)*(W/r.width), y=(e.clientY-r.top)*(H/r.height);
+    const L=layout();
+    let idx=Math.floor(x/L.cw);
+    // Clicks on the array row or on the range's node in the tree both count.
+    if(idx<ask[0] || idx>ask[1]) return;
+    if(y>L.arrY+L.ch+12){
+      const nd=tree.nodes.find(t=>t.state==='active' && t.lo===ask[0] && t.hi===ask[1]);
+      if(!nd) return;
+      const ny=L.treeTop+nd.row*L.rowH;
+      if(y<ny-6 || y>ny+L.cellH+6) return;
+    }
+    chosen=idx; ask=null; cv.classList.remove('ask');
+    $('status').textContent= running?'sorting…':'stepping';
+    if(!running) stepOnce=true;
+  });
+  $('replay').addEventListener('click',resetRun);
+  $('shuffle').addEventListener('click',newArray);
+  $('order').addEventListener('change',newArray);
+  $('algo').addEventListener('change',resetRun);
+  $('pivot').addEventListener('change',resetRun);
+  $('size').addEventListener('input',e=>{ n=parseInt(e.target.value,10); newArray(); });
+  $('speed').addEventListener('input',e=>{ speed=parseInt(e.target.value,10); });
 
   newArray();
   requestAnimationFrame(frame);
