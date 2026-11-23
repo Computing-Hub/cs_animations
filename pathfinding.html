@@ -44,7 +44,9 @@
 <div class="wrap">
   <a class="back" href="index.html">← all animations</a>
   <h1>SHORTEST PATH — DIJKSTRA &amp; A*</h1>
-  <p class="sub">Find the shortest path from <b>A</b> to <b>H</b> on a random weighted graph. Each step locks in the unvisited node with the lowest tentative cost; the table shows how distances and predecessors update.</p>
+  <p class="sub">Find the shortest path from <b>A</b> to <b>H</b> on a random weighted graph. Each step locks in one node; the table shows how distances and predecessors update.
+  <b>Dijkstra</b> finds the shortest path from A to <em>every</em> node, so it keeps going until all of them are locked in, always choosing the unvisited node with the lowest cost so far.
+  <b>A*</b> is aimed at one goal: it adds a heuristic (the straight-line distance to H) and stops as soon as H is locked in, so it usually locks in fewer nodes.</p>
 
   <div class="stage"><canvas id="cv"></canvas></div>
 
@@ -60,17 +62,18 @@
     <label>Speed <input id="speed" type="range" min="1" max="6" step="1" value="2" /></label>
   </div>
 
-  <div class="stats">Step: <b id="stp">0</b> &nbsp;·&nbsp; Status: <b id="status">ready</b> &nbsp;·&nbsp; Path: <b id="pathtxt">–</b> &nbsp;·&nbsp; Cost: <b id="cost">–</b></div>
+  <div class="stats">Step: <b id="stp">0</b> &nbsp;·&nbsp; Nodes locked in: <b id="locked">0</b> of 8 &nbsp;·&nbsp; Status: <b id="status">ready</b> &nbsp;·&nbsp; Path: <b id="pathtxt">–</b> &nbsp;·&nbsp; Cost: <b id="cost">–</b></div>
   <div class="legend">
     <span><i style="background:var(--start)"></i>start (A)</span>
     <span><i style="background:var(--target)"></i>goal (H)</span>
     <span><i style="background:var(--cur)"></i>just locked-in</span>
     <span><i style="background:var(--visit)"></i>visited</span>
+    <span><i style="background:var(--open)"></i>in the open list (A*)</span>
     <span><i style="background:var(--path)"></i>shortest path</span>
   </div>
 
   <div class="tablewrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
-  <div class="hint">Each row shows the state after picking one node. The picked cell is green; previously-visited cells are blue. Cells read <code>cost (predecessor)</code>; <code>∞</code> means unreachable so far. For A*, the heading also shows <code>h</code> (straight-line distance) for each node and an <code>f = g + h</code> column.</div>
+  <div class="hint">Each row shows the state after picking one node. The picked cell is green; previously-visited cells are blue. Cells read <code>cost (predecessor)</code>; <code>∞</code> means unreachable so far. For A*, the heading also shows <code>h</code> (straight-line distance) for each node and an <code>f = g + h</code> column. Run both on the same graph and compare how many nodes each one locks in.</div>
 </div>
 
 <script>
@@ -89,7 +92,7 @@
   let algo='dijkstra';
   let gen=null, running=false, stepOnce=false, speed=2, acc=0;
   let stepNum=0, currentNode=null, distSnap={}, prevSnap={}, visited=new Set();
-  let pathEdges=new Set(), pathNodes=new Set(), done=false;
+  let pathEdges=new Set(), pathNodes=new Set(), done=false, openSnap=new Set();
 
   // ---- random graph ----
   function randomGraph(){
@@ -143,13 +146,13 @@
     while(true){
       let best=null, bestd=Infinity;
       for(const id of IDS) if(!vis.has(id) && dist[id]<bestd){bestd=dist[id]; best=id;}
-      if(best===null){ yield {type:'fail'}; return; }
+      if(best===null){ yield dist['H']<Infinity ? {type:'done', path:reconstruct(prev,'H'), cost:dist['H']} : {type:'fail'}; return; }
       vis.add(best);
       for(const e of adj[best]){ if(vis.has(e.to)) continue;
         const nd=dist[best]+e.w;
         if(nd<dist[e.to]){ dist[e.to]=nd; prev[e.to]=best; } }
-      yield {type:'visit', node:best, dist:copy(dist), prev:copy(prev), visited:new Set(vis)};
-      if(best==='H'){ yield {type:'done', path:reconstruct(prev,'H'), cost:dist['H']}; return; }
+      yield {type:'visit', node:best, dist:copy(dist), prev:copy(prev), visited:new Set(vis), goalFinal: best==='H'};
+      if(vis.size===IDS.length){ yield {type:'done', path:reconstruct(prev,'H'), cost:dist['H']}; return; }
     }
   }
   function* astar(){
@@ -162,7 +165,7 @@
       for(const e of adj[best]){ if(closed.has(e.to)) continue;
         const ng=g[best]+e.w;
         if(ng<g[e.to]){ g[e.to]=ng; prev[e.to]=best; open.add(e.to); } }
-      yield {type:'visit', node:best, dist:copy(g), prev:copy(prev), visited:new Set(closed), f:bestf};
+      yield {type:'visit', node:best, dist:copy(g), prev:copy(prev), visited:new Set(closed), f:bestf, open:new Set(open)};
       if(best==='H'){ yield {type:'done', path:reconstruct(prev,'H'), cost:g['H']}; return; }
     }
     yield {type:'fail'};
@@ -211,12 +214,13 @@
 
   function resetRun(){
     gen=null; running=false; stepOnce=false; acc=0;
-    stepNum=0; currentNode=null; visited=new Set(); pathEdges=new Set(); pathNodes=new Set(); done=false;
+    stepNum=0; currentNode=null; visited=new Set(); pathEdges=new Set(); pathNodes=new Set(); done=false; openSnap=new Set(['A']);
     distSnap={}; prevSnap={};
     IDS.forEach(id=>{ distSnap[id]=Infinity; prevSnap[id]=null; });
     distSnap['A']=0;
     buildHeader(); $('tbody').innerHTML=''; addInitialRow();
-    $('play').textContent='▶ Run'; $('stp').textContent='0';
+    $('play').textContent='▶ Run'; $('stp').textContent='0'; $('locked').textContent='0';
+    if(algo!=='astar') openSnap=new Set();
     $('status').textContent='ready'; $('pathtxt').textContent='–'; $('cost').textContent='–';
   }
 
@@ -227,13 +231,14 @@
     if(r.done){ done=true; return false; }
     const e=r.value;
     if(e.type==='visit'){
-      stepNum++; currentNode=e.node; distSnap=e.dist; prevSnap=e.prev; visited=e.visited;
-      $('stp').textContent=stepNum; addRow(e);
+      stepNum++; currentNode=e.node; distSnap=e.dist; prevSnap=e.prev; visited=e.visited; openSnap=e.open||new Set();
+      $('stp').textContent=stepNum; $('locked').textContent=visited.size; addRow(e);
+      if(e.goalFinal) $('status').textContent='H locked in at cost '+e.dist['H']+'; Dijkstra carries on until every node is locked in';
     } else if(e.type==='done'){
       pathNodes=new Set(e.path); pathEdges=new Set();
       for(let i=0;i<e.path.length-1;i++) pathEdges.add(edgeKey(e.path[i], e.path[i+1]));
-      done=true; running=false;
-      $('status').textContent='path found'; $('pathtxt').textContent=e.path.join(' → ');
+      done=true; running=false; openSnap=new Set();
+      $('status').textContent = algo==='astar' ? 'goal reached: A* stops here' : 'all nodes locked in'; $('pathtxt').textContent=e.path.join(' → ');
       $('cost').textContent=e.cost; $('play').textContent='▶ Run';
     } else if(e.type==='fail'){
       done=true; running=false;
@@ -266,6 +271,7 @@
     IDS.forEach(id=>{
       const n=nodes[id], r=22;
       let stroke='#33415f', fill='#0b1426', txt='#cfe6ff';
+      if(openSnap.has(id) && !visited.has(id)){ stroke=css('--open'); txt='#bff8ff'; }
       if(visited.has(id)){ fill='rgba(47,109,240,.32)'; stroke=css('--visit'); txt='#bff8ff'; }
       if(pathNodes.has(id)){ fill='rgba(255,226,77,.25)'; stroke=css('--path'); txt='#ffe24d'; }
       if(id===currentNode){ stroke=css('--cur'); }
