@@ -21,6 +21,10 @@
   .stage{position:relative;border:1px solid var(--edge);border-radius:12px;overflow:hidden;
     background:#04050a;box-shadow:0 0 40px rgba(22,240,255,.07)}
   canvas{display:block;width:100%;height:auto}
+  .watch{margin:0 0 16px;border:1px solid var(--edge);border-radius:12px;background:var(--panel);overflow:hidden}
+  .watch summary{cursor:pointer;padding:10px 14px;font-size:13px;letter-spacing:.03em;color:var(--txt)}
+  .watch summary:hover{color:#fff}
+  .watch video{display:block;width:100%;height:auto;background:#000}
   .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
   .controls button{font:inherit;color:var(--txt);background:var(--panel);
     border:1px solid var(--edge);border-radius:8px;padding:8px 14px;cursor:pointer}
@@ -37,6 +41,14 @@
     <h1>F E T C H · D E C O D E · E X E C U T E</h1>
     <p>A Von Neumann CPU running a tiny program. Watch each micro-operation move data across the buses between RAM, registers and the ALU.</p>
   </header>
+
+  <details class="watch" open>
+    <summary>▶ Watch first: the cycle explained (4 min)</summary>
+    <video controls preload="metadata" playsinline poster="media/fetch-decode-execute-cycle.jpg">
+      <source src="media/fetch-decode-execute-cycle.mp4" type="video/mp4">
+      <track kind="captions" src="media/fetch-decode-execute-cycle.vtt" srclang="en" label="English">
+    </video>
+  </details>
 
   <div class="stage"><canvas id="cv"></canvas></div>
 
